@@ -1,6 +1,7 @@
 export(forecast)
-export(risk)
 export(risk_forecast)
+export(state_summary_forecast)
+export(risk)
 export(survival)
 export(draws)
 S3method(print, ps_forecast)

@@ -11,8 +11,9 @@ License: Proprietary
 Encoding: UTF-8
 LazyData: true
 Imports:
-    patientSimCore
+    patientSimCore,
+    parallel
 Suggests:
     testthat,
-    parallel,
-    future.apply
+    future.apply,
+    future

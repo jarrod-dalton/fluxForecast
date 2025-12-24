@@ -12,11 +12,20 @@
 #' @param vars Character vector of snapshot variables to store. 'alive' is always included.
 #' @param max_events Passed to Engine$run().
 #' @param seed Optional base seed for deterministic per-run seeds.
-#' @param parallel Logical; if TRUE uses patientSimCore::run_cohort(parallel=TRUE).
-#' @param n_workers Optional number of workers (passed to run_cohort).
+#' @param backend Parallel backend. One of c('none','cluster','future').
+#'   One of c('none','mclapply','cluster','future').
+#'   - 'none': run serially.
+#'   - 'mclapply': use parallel::mclapply (macOS/Linux; not Windows).
+#'   - 'cluster': use patientSimCore::run_cohort(parallel=TRUE), which uses a PSOCK cluster.
+#'   - 'future': use future.apply::future_lapply for summary_stats modes (recommended for cloud/Databricks).
+#'     Note: return='object' currently supports 'none' and 'cluster' only.
+#' @param n_workers Optional number of workers.
 #' @param return One of c('object','summary_stats','none').
 #' @param summary_stats If return='summary_stats', a character vector of summaries to compute.
-#'   Currently supports 'risk' only, via a spec list passed in meta$summary_spec.
+#'   Currently supports 'risk' and 'state'.
+#' @param summary_spec If return='summary_stats', a named list describing the summary to compute.
+#'   For summary_stats='risk', this is passed to risk_forecast().
+#'   For summary_stats='state', this is passed to state_summary_forecast().
 #' @param ctx_base Optional list of ctx fields to pass to Engine$run() besides params.
 #'
 #' @return A ps_forecast object if return='object'. If return='summary_stats', returns a list
@@ -32,13 +41,14 @@ forecast <- function(
   vars = NULL,
   max_events = 1000,
   seed = NULL,
-  parallel = FALSE,
+  backend = c("none", "mclapply", "cluster", "future"),
   n_workers = NULL,
   return = c("object", "summary_stats", "none"),
   summary_stats = NULL,
   summary_spec = NULL,
   ctx_base = NULL
 ) {
+  backend <- match.arg(backend)
   return <- match.arg(return)
 
   if (missing(engine) || is.null(engine)) stop("engine is required.", call. = FALSE)
@@ -74,52 +84,12 @@ forecast <- function(
   # We use ctx_base by injecting into Engine$run via ctx within run_cohort.
   if (!is.null(ctx_base) && !is.list(ctx_base)) stop("ctx_base must be a list or NULL.", call. = FALSE)
 
-  # --------------------------------------------------------------------------
-  # summary_stats short-circuit: compute requested summaries without retaining
-  # full per-run matrices (ps_forecast). This is the memory-friendly mode.
-  # --------------------------------------------------------------------------
-  if (return == "summary_stats") {
-    if (is.null(summary_stats)) stop("summary_stats must be specified when return='summary_stats'.", call. = FALSE)
-    summary_stats <- unique(as.character(summary_stats))
-
-    # Allow summary_spec in either the explicit argument or ctx_base$summary_spec
-    if (is.null(summary_spec) && is.list(ctx_base) && !is.null(ctx_base$summary_spec)) {
-      summary_spec <- ctx_base$summary_spec
-    }
-
-    res <- list()
-    for (s in summary_stats) {
-      if (identical(s, "risk")) {
-        if (is.null(summary_spec) || !is.list(summary_spec)) {
-          stop("For summary_stats='risk', provide summary_spec as a list (e.g., list(event=..., start_time=..., terminal_events=...)).", call. = FALSE)
-        }
-        res[["risk"]] <- do.call(
-          risk_forecast,
-          c(
-            list(
-              engine = engine,
-              patients = patients,
-              times = times,
-              S = S,
-              param_sets = param_sets,
-              max_events = max_events,
-              seed = seed,
-              parallel = parallel,
-              n_workers = n_workers,
-              ctx_base = ctx_base
-            ),
-            summary_spec
-          )
-        )
-      } else {
-        stop("Unknown summary_stats: ", s, call. = FALSE)
-      }
-    }
-    return(res)
+  # Use patientSimCore::run_cohort to run R = N * P * S simulations.
+  if (return == "object" && (identical(backend, "future") || identical(backend, "mclapply"))) {
+    stop("backend must be 'none' or 'cluster' when return='object'. Use backend='future' or 'mclapply' with return='summary_stats'.", call. = FALSE)
   }
 
-  # Use patientSimCore::run_cohort to run R = N * P * S simulations.
-  out <- patientSimCore::run_cohort(
+out <- patientSimCore::run_cohort(
     engine = engine,
     patients = patients,
     n_param_draws = P,
@@ -128,7 +98,7 @@ forecast <- function(
     max_events = max_events,
     max_time = horizon,
     return_observations = FALSE,
-    parallel = isTRUE(parallel),
+    parallel = identical(backend, "cluster"),
     n_workers = n_workers,
     seed = seed
   )
@@ -224,6 +194,67 @@ forecast <- function(
 
   if (return == "none") return(invisible(NULL))
 
+  # Memory-light summaries (do not materialize a ps_forecast).
+  if (return == "summary_stats") {
+    backend_used <- if (identical(backend, "cluster")) "none" else backend
+    if (identical(backend, "cluster")) {
+      warning("backend='cluster' is not used for return='summary_stats' (streaming summaries). Using backend='none'. Use backend='future' for cluster/cloud.", call. = FALSE)
+    }
+    if (is.null(summary_stats) || length(summary_stats) < 1L) {
+      stop("summary_stats must be specified when return='summary_stats'.", call. = FALSE)
+    }
+    summary_stats <- as.character(summary_stats)
+    if (length(summary_stats) != 1L) {
+      stop("v1 supports exactly one summary at a time in return='summary_stats'.", call. = FALSE)
+    }
+    if (is.null(summary_spec) || !is.list(summary_spec)) {
+      stop("summary_spec must be a named list when return='summary_stats'.", call. = FALSE)
+    }
+
+    if (identical(summary_stats[[1]], "risk")) {
+      return(risk_forecast(
+        engine = engine,
+        patients = patients,
+        times = times,
+        S = S,
+        param_sets = param_sets,
+        max_events = max_events,
+        seed = seed,
+        backend = backend_used,
+        n_workers = n_workers,
+        ctx_base = ctx_base,
+        event = summary_spec$event,
+        start_time = summary_spec$start_time %||% NULL,
+        terminal_events = summary_spec$terminal_events %||% NULL,
+        condition_on_events = summary_spec$condition_on_events %||% NULL,
+        eligible = summary_spec$eligible %||% NULL,
+        ctx = summary_spec$ctx %||% NULL
+      ))
+    }
+    if (identical(summary_stats[[1]], "state")) {
+      return(state_summary_forecast(
+        engine = engine,
+        patients = patients,
+        times = times,
+        vars = summary_spec$vars,
+        S = S,
+        param_sets = param_sets,
+        max_events = max_events,
+        seed = seed,
+        backend = backend_used,
+        n_workers = n_workers,
+        ctx_base = ctx_base,
+        start_time = summary_spec$start_time %||% NULL,
+        terminal_events = summary_spec$terminal_events %||% NULL,
+        condition_on_events = summary_spec$condition_on_events %||% NULL,
+        eligible = summary_spec$eligible %||% NULL,
+        ctx = summary_spec$ctx %||% NULL
+      ))
+    }
+
+    stop("Unknown summary_stats: ", summary_stats[[1]], call. = FALSE)
+  }
+
   x <- new_ps_forecast(
     times = times,
     time0 = min(times),
@@ -239,8 +270,7 @@ forecast <- function(
 
   if (return == "object") return(x)
 
-  # return == 'none'
-  invisible(NULL)
+  x
 }
 
 `%||%` <- function(x, y) if (is.null(x)) y else x

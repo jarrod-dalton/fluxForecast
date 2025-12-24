@@ -2,7 +2,10 @@
 \alias{forecast}
 \title{Run forward-simulation forecasts for one or more patients}
 \description{
-Run forward simulations using a patientSimCore Engine and store snapshots at requested times.
+Runs forward simulations using a patientSimCore Engine and collects snapshots at the requested
+times. By convention, models expose an \code{alive} state variable to indicate vital status
+(alive vs dead). This is separate from things like discharge or loss to follow-up, which can be
+represented with other state variables (e.g., \code{active_followup}).
 }
 \usage{
 forecast(engine, patients, times, S = 200, param_sets = NULL, vars = NULL,
@@ -19,11 +22,20 @@ forecast(engine, patients, times, S = 200, param_sets = NULL, vars = NULL,
   \item{vars}{Snapshot variables to store; \code{alive} is always included.}
   \item{max_events}{Maximum number of events per run.}
   \item{seed}{Optional base seed.}
-  \item{parallel}{Logical; use parallel execution in run_cohort.}
-  \item{n_workers}{Number of workers if parallel.}
+  \item{backend}{Parallel backend. One of \code{c("none","mclapply","cluster","future")}.
+  \itemize{
+    \item \code{"none"}: run serially.
+    \item \code{"mclapply"}: use \code{parallel::mclapply} (macOS/Linux; not Windows).
+    \item \code{"cluster"}: PSOCK cluster via \code{patientSimCore::run_cohort(parallel=TRUE)} (only for \code{return="object"}).
+    \item \code{"future"}: \code{future.apply::future_lapply} for \code{return="summary_stats"} (recommended for cloud/Databricks).
+  }}
+  \item{n_workers}{Optional number of workers. For \code{backend="future"}, set workers via \code{future::plan()}.}
   \item{return}{One of \code{"object"}, \code{"summary_stats"}, or \code{"none"}.}
-  \item{summary_stats}{Summaries to compute when \code{return="summary_stats"}.}
-  \item{summary_spec}{List of arguments passed to summary helpers (e.g., for \code{summary_stats="risk"}, provide \code{list(event=..., start_time=..., terminal_events=...)}).}
+  \item{summary_stats}{Summary name when \code{return="summary_stats"} (v1 supports \code{"risk"} or \code{"state"}).}
+  \item{summary_spec}{Named list describing the summary to compute when
+  \code{return="summary_stats"}. For \code{summary_stats="risk"} this is passed
+  to \code{risk_forecast()}. For \code{summary_stats="state"} this is passed to
+  \code{state_summary_forecast()}.}
   \item{ctx_base}{Optional list of ctx fields besides params (reserved).}
 }
 \value{
