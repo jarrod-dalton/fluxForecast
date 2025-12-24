@@ -1,0 +1,18 @@
+Package: patientSimForecast
+Type: Package
+Title: Forecasting and Validation Tools for patientSimCore Simulations
+Version: 0.0.1
+Authors@R: c(
+    person("Jarrod", "Dalton", role = c("aut", "cre"))
+)
+Description: Tools for running forward simulation forecasts from patientSimCore
+    and summarizing probabilistic forecasts (risk, draws, and related objects).
+License: Proprietary
+Encoding: UTF-8
+LazyData: true
+Imports:
+    patientSimCore
+Suggests:
+    testthat,
+    parallel,
+    future.apply
