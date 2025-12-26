@@ -52,8 +52,14 @@ risk <- function(
   R <- nrow(x$run_index)
 
   # base eligibility: defined & alive at start_time
-  elig <- x$defined[, t_start_idx] & isTRUEorNA(x$alive[, t_start_idx])
-  elig[is.na(elig)] <- FALSE
+  # NOTE: forecast() stores non-numeric state as character (e.g., "TRUE"/"FALSE").
+  # We must not treat character "TRUE" as NA.
+  alive0 <- x$alive[, t_start_idx]
+  if (!is.logical(alive0)) {
+    alive0 <- suppressWarnings(as.logical(alive0))
+  }
+  # vectorized TRUE checks (isTRUE() is scalar-only)
+  elig <- (x$defined[, t_start_idx] %in% TRUE) & (alive0 %in% TRUE)
 
   # fast event-based conditioning at start_time
   # helper to compute first time of any event in a set

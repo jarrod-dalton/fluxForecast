@@ -53,8 +53,9 @@ draws <- function(
   # Determine cohort run_ids if needed
   fixed_ids <- NULL
   if (cohort == "fixed" || !is.null(eligible)) {
-    elig <- x$defined[, t_start_idx] & isTRUEorNA(x$alive[, t_start_idx])
-    elig[is.na(elig)] <- FALSE
+    alive0 <- x$alive[, t_start_idx]
+    if (is.character(alive0)) alive0 <- as.logical(alive0)
+    elig <- (x$defined[, t_start_idx] %in% TRUE) & (alive0 %in% TRUE)
 
     if (!is.null(eligible)) {
       if (!is.function(eligible)) stop("eligible must be a function if provided.", call. = FALSE)
@@ -87,12 +88,13 @@ draws <- function(
         run_ids <- fixed_ids
         if (length(run_ids) == 0L) next
         # only include defined at this time
-        run_ids <- run_ids[x$defined[run_ids, tt]]
+        run_ids <- run_ids[x$defined[run_ids, tt] %in% TRUE]
         if (length(run_ids) == 0L) next
       } else {
         # timepoint cohort: defined & alive at each time
-        run_ids <- which(x$defined[, tt] & isTRUEorNA(x$alive[, tt]))
-        run_ids <- run_ids[!is.na(run_ids)]
+        alive_t <- x$alive[, tt]
+        if (is.character(alive_t)) alive_t <- as.logical(alive_t)
+        run_ids <- which((x$defined[, tt] %in% TRUE) & (alive_t %in% TRUE))
         if (length(run_ids) == 0L) next
       }
 
