@@ -60,3 +60,24 @@ This currently supports:
 - `backend = "cluster"`: PSOCK cluster via `patientSimCore::run_cohort(parallel=TRUE)`
 
 For large-scale parallel work, prefer the memory-light summary paths above.
+
+
+## Runtime tips for live forecasts
+
+If you need results in a few seconds (e.g., an interactive dashboard), the goal is to keep work per request small and keep your workers “warm”.
+
+Practical defaults:
+
+- Use `return = "summary_stats"` (risk curves / state summaries). Avoid returning a full `ps_forecast` object in live settings.
+- Keep the time grid short (e.g., 4–8 future times), and avoid ultra-fine grids unless you truly need them.
+- Start with `S = 100`–`300` simulations per patient. Increase offline for validation, not at request time.
+- Prefer `backend = "future"` on servers and clusters. Set the plan once at startup and reuse it:
+
+  ```r
+  future::plan(future::multisession, workers = 4)
+  ```
+
+- If your model has expensive pieces (e.g., large table lookups), preload them in `ctx` or bundle state so they are not rebuilt each run.
+- If you must support cohorts, parallelize across patients first (coarser tasks), then across simulations only if needed.
+
+A useful pattern for APIs: run a small forecast quickly for the response, and queue a larger job (bigger `S`, richer outputs) asynchronously for “download later”.

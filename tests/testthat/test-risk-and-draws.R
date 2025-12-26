@@ -75,7 +75,7 @@ test_that("forecast -> risk() and survival() behave as expected", {
     S = 3,
     param_sets = list(list()),
     vars = c("alive", "phase", "x"),
-    parallel = FALSE,
+    backend = "none",
     return = "object"
   )
 
@@ -114,7 +114,7 @@ test_that("draws() returns a data.frame and respects times", {
     S = 2,
     param_sets = list(list()),
     vars = c("alive", "phase", "x"),
-    parallel = FALSE,
+    backend = "none",
     return = "object"
   )
 
