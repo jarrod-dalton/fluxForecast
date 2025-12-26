@@ -1,6 +1,7 @@
 export(forecast)
 export(risk_forecast)
 export(state_summary_forecast)
+export(state_summary)
 export(risk)
 export(survival)
 export(draws)

@@ -311,7 +311,7 @@ state_summary_forecast <- function(
 
   # Each run returns compact partial sums; we reduce across runs.
   blank_num_part <- function() {
-    out <- lapply(vars, function(v) list(n = integer(T), sum = numeric(T), sumsq = numeric(T)))
+    out <- lapply(vars, function(v) list(n = integer(T), sum = numeric(T), sumsq = numeric(T), min = rep(Inf, T), max = rep(-Inf, T)))
     names(out) <- vars
     out
   }
@@ -359,6 +359,11 @@ state_summary_forecast <- function(
     num_part <- blank_num_part()
     cat_part <- blank_cat_part()
 
+    # Track whether each var ever takes a value outside {0,1} (or non-integer)
+    # among eligible observations. This lets us treat true binary numerics as
+    # categorical in the final output.
+    bin_track <- setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
+
     p <- out$patient
     for (tt in seq_along(times)) {
       t <- times[[tt]]
@@ -369,9 +374,27 @@ state_summary_forecast <- function(
         val <- snap[[v]]
         if (is.null(val)) next
         if (is.numeric(val) && length(val) == 1L && is.finite(val)) {
+          # Always accumulate numeric moments (used for continuous vars).
           num_part[[v]]$n[[tt]] <- num_part[[v]]$n[[tt]] + 1L
           num_part[[v]]$sum[[tt]] <- num_part[[v]]$sum[[tt]] + val
           num_part[[v]]$sumsq[[tt]] <- num_part[[v]]$sumsq[[tt]] + (val * val)
+          num_part[[v]]$min[[tt]] <- min(num_part[[v]]$min[[tt]], val)
+          num_part[[v]]$max[[tt]] <- max(num_part[[v]]$max[[tt]], val)
+          bt <- bin_track[[v]]
+          bt$min <- min(bt$min, val)
+          bt$max <- max(bt$max, val)
+          if (!isTRUE(all.equal(val, round(val)))) bt$non_int <- TRUE
+          bin_track[[v]] <- bt
+
+          # Also accumulate categorical counts for (0,1) values so we can
+          # later decide whether this variable is truly binary.
+          if (isTRUE(all.equal(val, 0)) || isTRUE(all.equal(val, 1))) {
+            nm <- as.character(as.integer(val))
+            slot <- cat_part[[v]][[tt]]
+            if (is.null(slot)) slot <- integer(0)
+            slot[[nm]] <- (slot[[nm]] %||% 0L) + 1L
+            cat_part[[v]][[tt]] <- slot
+          }
         } else {
           nm <- as.character(val)
           slot <- cat_part[[v]][[tt]]
@@ -382,7 +405,7 @@ state_summary_forecast <- function(
       }
     }
 
-    list(num = num_part, cat = cat_part)
+    list(num = num_part, cat = cat_part, bin_track = bin_track)
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -401,6 +424,8 @@ state_summary_forecast <- function(
   names(num_tot) <- vars
   names(cat_tot) <- vars
 
+  bin_tot <- setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
+
   for (o in outs) {
     if (is.null(o)) next
     n_eligible_total <- n_eligible_total + 1L
@@ -408,6 +433,14 @@ state_summary_forecast <- function(
       num_tot[[v]]$n <- num_tot[[v]]$n + o$num[[v]]$n
       num_tot[[v]]$sum <- num_tot[[v]]$sum + o$num[[v]]$sum
       num_tot[[v]]$sumsq <- num_tot[[v]]$sumsq + o$num[[v]]$sumsq
+      num_tot[[v]]$min <- pmin(num_tot[[v]]$min, o$num[[v]]$min)
+      num_tot[[v]]$max <- pmax(num_tot[[v]]$max, o$num[[v]]$max)
+      bt <- bin_tot[[v]]
+      obt <- o$bin_track[[v]]
+      bt$min <- min(bt$min, obt$min)
+      bt$max <- max(bt$max, obt$max)
+      bt$non_int <- isTRUE(bt$non_int) || isTRUE(obt$non_int)
+      bin_tot[[v]] <- bt
 
       for (tt in seq_along(times)) {
         slot <- o$cat[[v]][[tt]]
@@ -431,7 +464,9 @@ state_summary_forecast <- function(
     mean <- ifelse(n > 0L, sum / n, NA_real_)
     var <- ifelse(n > 1L, (sumsq - (sum * sum) / n) / (n - 1L), NA_real_)
     sd <- sqrt(var)
-    numeric[[v]] <- data.frame(time = times, n = as.integer(n), mean = mean, sd = sd)
+    mn <- ifelse(is.finite(num_tot[[v]]$min), num_tot[[v]]$min, NA_real_)
+    mx <- ifelse(is.finite(num_tot[[v]]$max), num_tot[[v]]$max, NA_real_)
+    numeric[[v]] <- data.frame(time = times, n = as.integer(n), mean = mean, sd = sd, min = mn, max = mx)
   }
 
   categorical <- list()
@@ -439,6 +474,10 @@ state_summary_forecast <- function(
     rows_out <- list()
     for (tt in seq_along(times)) {
       slot <- cat_tot[[v]][[tt]]
+      # If this var is not truly binary, drop accidental (0,1) counts collected from numeric values.
+      bt <- bin_tot[[v]]
+      is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !isTRUE(bt$non_int) && bt$min >= 0 && bt$max <= 1
+      if (!is_binary_numeric && !is.null(slot) && all(names(slot) %in% c('0','1'))) slot <- NULL
       if (is.null(slot) || length(slot) == 0L) next
       nn <- sum(slot)
       rows_out[[tt]] <- data.frame(

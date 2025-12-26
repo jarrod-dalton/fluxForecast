@@ -44,7 +44,7 @@ forecast <- function(
   backend = c("none", "mclapply", "cluster", "future"),
   n_workers = NULL,
   return = c("object", "summary_stats", "none"),
-  summary_stats = NULL,
+  summary_stats = c("both", "risk", "state"),
   summary_spec = NULL,
   ctx_base = NULL
 ) {
@@ -83,13 +83,14 @@ forecast <- function(
   # Build wrapper ctx that is merged in per-run inside run_cohort (via ctx$params)
   # We use ctx_base by injecting into Engine$run via ctx within run_cohort.
   if (!is.null(ctx_base) && !is.list(ctx_base)) stop("ctx_base must be a list or NULL.", call. = FALSE)
+  if (is.null(ctx_base$time_unit)) ctx_base$time_unit <- "unitless"
 
   # Use patientSimCore::run_cohort to run R = N * P * S simulations.
   if (return == "object" && (identical(backend, "future") || identical(backend, "mclapply"))) {
     stop("backend must be 'none' or 'cluster' when return='object'. Use backend='future' or 'mclapply' with return='summary_stats'.", call. = FALSE)
   }
 
-out <- patientSimCore::run_cohort(
+out <- suppressWarnings(patientSimCore::run_cohort(
     engine = engine,
     patients = patients,
     n_param_draws = P,
@@ -101,7 +102,7 @@ out <- patientSimCore::run_cohort(
     parallel = identical(backend, "cluster"),
     n_workers = n_workers,
     seed = seed
-  )
+  ))
 
   runs <- out$runs
   idx <- out$index
@@ -195,65 +196,8 @@ out <- patientSimCore::run_cohort(
   if (return == "none") return(invisible(NULL))
 
   # Memory-light summaries (do not materialize a ps_forecast).
-  if (return == "summary_stats") {
-    backend_used <- if (identical(backend, "cluster")) "none" else backend
-    if (identical(backend, "cluster")) {
-      warning("backend='cluster' is not used for return='summary_stats' (streaming summaries). Using backend='none'. Use backend='future' for cluster/cloud.", call. = FALSE)
-    }
-    if (is.null(summary_stats) || length(summary_stats) < 1L) {
-      stop("summary_stats must be specified when return='summary_stats'.", call. = FALSE)
-    }
-    summary_stats <- as.character(summary_stats)
-    if (length(summary_stats) != 1L) {
-      stop("v1 supports exactly one summary at a time in return='summary_stats'.", call. = FALSE)
-    }
-    if (is.null(summary_spec) || !is.list(summary_spec)) {
-      stop("summary_spec must be a named list when return='summary_stats'.", call. = FALSE)
-    }
+  
 
-    if (identical(summary_stats[[1]], "risk")) {
-      return(risk_forecast(
-        engine = engine,
-        patients = patients,
-        times = times,
-        S = S,
-        param_sets = param_sets,
-        max_events = max_events,
-        seed = seed,
-        backend = backend_used,
-        n_workers = n_workers,
-        ctx_base = ctx_base,
-        event = summary_spec$event,
-        start_time = summary_spec$start_time %||% NULL,
-        terminal_events = summary_spec$terminal_events %||% NULL,
-        condition_on_events = summary_spec$condition_on_events %||% NULL,
-        eligible = summary_spec$eligible %||% NULL,
-        ctx = summary_spec$ctx %||% NULL
-      ))
-    }
-    if (identical(summary_stats[[1]], "state")) {
-      return(state_summary_forecast(
-        engine = engine,
-        patients = patients,
-        times = times,
-        vars = summary_spec$vars,
-        S = S,
-        param_sets = param_sets,
-        max_events = max_events,
-        seed = seed,
-        backend = backend_used,
-        n_workers = n_workers,
-        ctx_base = ctx_base,
-        start_time = summary_spec$start_time %||% NULL,
-        terminal_events = summary_spec$terminal_events %||% NULL,
-        condition_on_events = summary_spec$condition_on_events %||% NULL,
-        eligible = summary_spec$eligible %||% NULL,
-        ctx = summary_spec$ctx %||% NULL
-      ))
-    }
-
-    stop("Unknown summary_stats: ", summary_stats[[1]], call. = FALSE)
-  }
 
   x <- new_ps_forecast(
     times = times,
@@ -268,7 +212,27 @@ out <- patientSimCore::run_cohort(
     meta = meta
   )
 
-  if (return == "object") return(x)
+  
+if (return == "summary_stats") {
+  summary_stats <- match.arg(summary_stats, c("both", "risk", "state"))
+
+  res <- list()
+
+  if (summary_stats %in% c("risk", "both")) {
+    if (is.null(summary_spec)) stop("summary_spec must be provided when summary_stats includes 'risk'.", call. = FALSE)
+    res$risk <- do.call(risk, c(list(x = x), summary_spec))
+  }
+
+  if (summary_stats %in% c("state", "both")) {
+    res$state <- state_summary(x, vars = vars, times = times)
+  }
+
+  if (summary_stats == "risk") return(res$risk)
+  if (summary_stats == "state") return(res$state)
+  return(res)
+}
+
+if (return == "object") return(x)
 
   x
 }
