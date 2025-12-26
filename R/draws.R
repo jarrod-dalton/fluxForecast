@@ -123,7 +123,7 @@ draws <- function(
 
   if (length(var) == 1L) return(build_one(var[[1]]))
 
-  out <- setNames(vector("list", length(var)), var)
+  out <- stats::setNames(vector("list", length(var)), var)
   for (k in seq_along(var)) out[[k]] <- build_one(var[[k]])
   out
 }

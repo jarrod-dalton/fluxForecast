@@ -46,7 +46,7 @@ state_summary <- function(
   }
 
   Tidx <- match(times, x$times)
-  out <- setNames(vector("list", length(vars)), vars)
+  out <- stats::setNames(vector("list", length(vars)), vars)
 
   for (v in vars) {
     mat <- x$state[[v]]

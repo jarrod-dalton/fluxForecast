@@ -127,7 +127,7 @@ out <- suppressWarnings(patientSimCore::run_cohort(
   alive <- matrix(NA, nrow = R, ncol = T)
 
   # State matrices per var
-  state <- setNames(vector("list", length(vars)), vars)
+  state <- stats::setNames(vector("list", length(vars)), vars)
   for (v in vars) {
     state[[v]] <- matrix(NA, nrow = R, ncol = T)
   }

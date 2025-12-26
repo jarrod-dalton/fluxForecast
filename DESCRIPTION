@@ -4,6 +4,10 @@ Title: Forecasting and Validation Tools for patientSimCore Simulations
 Version: 0.4.0
 Author: Jarrod Dalton [aut, cre]
 Maintainer: Jarrod Dalton <jarrod.dalton@gmail.com>
+Authors@R: person(given = "Jarrod",
+                  family = "Dalton",
+                  role = c("aut", "cre"),
+                  email = "jarrod.dalton@gmail.com")
 Description: Tools for running forward simulation forecasts from patientSimCore
     and summarizing probabilistic forecasts (risk, draws, and related objects).
 License: Proprietary

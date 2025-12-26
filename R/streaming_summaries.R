@@ -14,8 +14,8 @@
 
 .build_run_grid <- function(n_patients, n_param_sets, S) {
   # Returns a data.frame with one row per run.
-  patient_id <- rep.int(seq_len(n_patients), each = n_param_sets * S)
-  param_set_id <- rep.int(rep.int(seq_len(n_param_sets), each = S), times = n_patients)
+  patient_id <- rep(seq_len(n_patients), each = n_param_sets * S)
+  param_set_id <- rep(rep(seq_len(n_param_sets), each = S), times = n_patients)
   sim_id <- rep.int(seq_len(S), times = n_patients * n_param_sets)
   data.frame(
     run_id = seq_len(n_patients * n_param_sets * S),
@@ -317,7 +317,7 @@ state_summary_forecast <- function(
   }
 
   blank_cat_part <- function() {
-    setNames(lapply(vars, function(v) vector("list", T)), vars)
+    stats::setNames(lapply(vars, function(v) vector("list", T)), vars)
   }
 
   one_run <- function(row) {
@@ -362,7 +362,7 @@ state_summary_forecast <- function(
     # Track whether each var ever takes a value outside {0,1} (or non-integer)
     # among eligible observations. This lets us treat true binary numerics as
     # categorical in the final output.
-    bin_track <- setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
+    bin_track <- stats::setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
 
     p <- out$patient
     for (tt in seq_along(times)) {
@@ -424,7 +424,7 @@ state_summary_forecast <- function(
   names(num_tot) <- vars
   names(cat_tot) <- vars
 
-  bin_tot <- setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
+  bin_tot <- stats::setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
 
   for (o in outs) {
     if (is.null(o)) next

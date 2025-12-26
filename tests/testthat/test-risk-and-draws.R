@@ -4,8 +4,8 @@ library(patientSimForecast)
 
 make_toy_bundle <- function() {
   propose_events <- function(patient, ctx, ...) {
-    phase <- patient$state()["phase"]
-    alive <- patient$state()["alive"]
+    phase <- patient$state()[["phase"]]
+    alive <- patient$state()[["alive"]]
     props <- list()
 
     # visit every 1 time unit until time < 6
@@ -29,7 +29,7 @@ make_toy_bundle <- function() {
   transition <- function(patient, event, ctx) {
     et <- event$event_type
     if (et == "visit") {
-      x <- patient$state()["x"]
+      x <- patient$state()[["x"]]
       return(list(x = x + 1))
     }
     if (et == "transplant") {
@@ -42,7 +42,7 @@ make_toy_bundle <- function() {
   }
 
   stop <- function(patient, event, ctx) {
-    if (!isTRUE(patient$state()["alive"])) return(TRUE)
+    if (!isTRUE(patient$state()[["alive"]])) return(TRUE)
     if (patient$last_time >= 6) return(TRUE)
     FALSE
   }
@@ -62,7 +62,7 @@ test_that("forecast -> risk() and survival() behave as expected", {
       x = list(default = 0, coerce = as.numeric)
   )
 
-  p <- Patient$new(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
+  p <- patientSimCore::new_patient(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_toy_bundle()
   provider <- list(load = function(model_spec, ...) bundle)
@@ -101,7 +101,7 @@ test_that("draws() returns a data.frame and respects times", {
       x = list(default = 0, coerce = as.numeric)
   )
 
-  p <- Patient$new(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
+  p <- patientSimCore::new_patient(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_toy_bundle()
   provider <- list(load = function(model_spec, ...) bundle)
