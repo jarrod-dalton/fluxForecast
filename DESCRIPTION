@@ -1,7 +1,7 @@
 Package: patientSimForecast
 Type: Package
 Title: Forecasting and Validation Tools for patientSimCore Simulations
-Version: 0.3.0
+Version: 0.4.0
 Authors@R: c(
     person("Jarrod", "Dalton", email = "jarrod.dalton@gmail.com", role = c("aut", "cre"))
     )

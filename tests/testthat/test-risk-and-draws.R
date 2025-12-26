@@ -4,8 +4,8 @@ library(patientSimForecast)
 
 make_toy_bundle <- function() {
   propose_events <- function(patient, ctx, ...) {
-    phase <- patient$state()["phase"]
-    alive <- patient$state()["alive"]
+    phase <- patient$state()[["phase"]]
+    alive <- patient$state()[["alive"]]
     props <- list()
 
     # visit every 1 time unit until time < 6
@@ -29,7 +29,7 @@ make_toy_bundle <- function() {
   transition <- function(patient, event, ctx) {
     et <- event$event_type
     if (et == "visit") {
-      x <- patient$state()["x"]
+      x <- patient$state()[["x"]]
       return(list(x = x + 1))
     }
     if (et == "transplant") {
@@ -42,7 +42,7 @@ make_toy_bundle <- function() {
   }
 
   stop <- function(patient, event, ctx) {
-    if (!isTRUE(patient$state()["alive"])) return(TRUE)
+    if (!isTRUE(patient$state()[["alive"]])) return(TRUE)
     if (patient$last_time >= 6) return(TRUE)
     FALSE
   }
