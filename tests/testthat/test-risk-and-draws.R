@@ -29,7 +29,7 @@ make_toy_bundle <- function() {
   transition <- function(patient, event, ctx) {
     et <- event$event_type
     if (et == "visit") {
-      x <- patient$state()["x"]
+      x <- patient$state()[["x"]]
       return(list(x = x + 1))
     }
     if (et == "transplant") {
@@ -72,6 +72,7 @@ test_that("forecast -> risk() and survival() behave as expected", {
     engine = engine,
     patients = list(p1 = p),
     times = c(0, 1, 3, 4, 6),
+    ctx = list(time_unit = "days"),
     S = 3,
     param_sets = list(list()),
     vars = c("alive", "phase", "x"),
@@ -111,6 +112,7 @@ test_that("draws() returns a data.frame and respects times", {
     engine = engine,
     patients = list(p1 = p),
     times = c(0, 1, 3),
+    ctx = list(time_unit = "days"),
     S = 2,
     param_sets = list(list()),
     vars = c("alive", "phase", "x"),
