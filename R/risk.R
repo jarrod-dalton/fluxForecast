@@ -67,6 +67,9 @@ risk <- function(
     # Guard against NA times (e.g., if an event time was missing in inputs).
     # With na.rm=TRUE, rows with no observed events remain Inf.
     ft <- suppressWarnings(apply(x$first_event_time[, cols, drop = FALSE], 1, min, na.rm = TRUE))
+    # Defensive: comparisons like (NA <= t) propagate NA, which can turn sums into NA.
+    # Treat missing event times as "never".
+    ft[is.na(ft)] <- Inf
     # If a row was all-NA, min(..., na.rm=TRUE) returns Inf (with warning); keep that.
     ft
   }
@@ -106,7 +109,16 @@ risk <- function(
   } else {
     # compute min time of any event in 'event'
     ft_event <- first_time_any(event)
-    n_events <- vapply(times, function(t) sum(ft_event[eligible_run_ids] <= t), integer(1))
+    n_events <- vapply(
+      times,
+      function(t) {
+        leq <- ft_event[eligible_run_ids] <= t
+        # comparisons with NA yield NA; treat those as FALSE (no event by t)
+        leq[is.na(leq)] <- FALSE
+        sum(leq)
+      },
+      integer(1)
+    )
     res <- data.frame(
       time = times,
       n_eligible = rep.int(n_eligible, length(times)),
