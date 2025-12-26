@@ -153,7 +153,11 @@ out <- suppressWarnings(patientSimCore::run_cohort(
       by_type <- split(ev$time, ev$event_type)
       for (et in names(by_type)) {
         j <- match(et, all_event_types)
-        if (!is.na(j)) first_event_time[i, j] <- min(by_type[[et]])
+        # Keep Inf when an event type never occurs; guard against NA times.
+        if (!is.na(j)) {
+          tmin <- suppressWarnings(min(by_type[[et]], na.rm = TRUE))
+          if (is.finite(tmin)) first_event_time[i, j] <- tmin
+        }
       }
     }
 

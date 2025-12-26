@@ -64,7 +64,11 @@ risk <- function(
       bad <- ev_set[is.na(cols)]
       stop("Unknown event types: ", paste(bad, collapse = ", "), call. = FALSE)
     }
-    apply(x$first_event_time[, cols, drop = FALSE], 1, min)
+    # Guard against NA times (e.g., if an event time was missing in inputs).
+    # With na.rm=TRUE, rows with no observed events remain Inf.
+    ft <- suppressWarnings(apply(x$first_event_time[, cols, drop = FALSE], 1, min, na.rm = TRUE))
+    # If a row was all-NA, min(..., na.rm=TRUE) returns Inf (with warning); keep that.
+    ft
   }
 
   if (!is.null(terminal_events)) {
