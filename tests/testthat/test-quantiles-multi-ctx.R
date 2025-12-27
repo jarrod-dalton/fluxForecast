@@ -64,7 +64,9 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
     patients = pat,
     times = times,
     S = 1,
-    param_sets = list(list()),
+        # Five parameter sets, one draw each. We keep param_sets empty here and encode
+    # the deterministic shift inside ctx so we can test pooling across ctx.
+    param_sets = replicate(5, list(), simplify = FALSE),
     ctx = ctx_list,
     backend = "none",
     return = "object",
