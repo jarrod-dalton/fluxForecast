@@ -65,7 +65,7 @@ state_summary <- function(
 
     for (k in seq_along(Tidx)) {
       j <- Tidx[[k]]
-      elig <- isTRUE(x$alive[, j])
+      elig <- !is.na(x$alive[, j]) & (x$alive[, j] == TRUE)
       vals <- mat[elig, j]
       vals <- vals[!is.na(vals)]
       if (length(vals) > 0) {
@@ -101,7 +101,7 @@ state_summary <- function(
     if (is_cont) {
       for (k in seq_along(Tidx)) {
         j <- Tidx[[k]]
-        elig <- isTRUE(x$alive[, j])
+        elig <- !is.na(x$alive[, j]) & (x$alive[, j] == TRUE)
         vals <- mat[elig, j]
         vals <- vals[!is.na(vals)]
         vals <- suppressWarnings(as.numeric(vals))
@@ -140,7 +140,7 @@ state_summary <- function(
       # counts/proportions by level at each time
       for (k in seq_along(Tidx)) {
         j <- Tidx[[k]]
-        elig <- isTRUE(x$alive[, j])
+        elig <- !is.na(x$alive[, j]) & (x$alive[, j] == TRUE)
         vals <- mat[elig, j]
         vals <- vals[!is.na(vals)]
         if (length(vals) == 0) next
