@@ -56,10 +56,15 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
   # for probs {0.25, 0.5, 0.75}.
   ctx_list <- lapply(0:4, function(s) list(times = times, params = list(shift = s)))
 
+  provider <- list(load = function(model_spec, ...) toy_bundle)
+  engine <- patientSimCore::Engine$new(provider = provider)
+
   x <- forecast(
+    engine = engine,
     patients = pat,
-    bundle = toy_bundle,
     times = times,
+    S = 1,
+    param_sets = list(list()),
     ctx = ctx_list,
     backend = "none",
     return = "object",
