@@ -94,7 +94,6 @@
 #'   and n_workers is provided, risk_forecast() will temporarily set a local
 #'   future plan (multisession) with that number of workers and then restore
 #'   the previous plan.
-#' @param ctx_base Optional list merged into ctx for Engine$run() besides params.
 #'
 #' @return A ps_risk object.
 #' @export
@@ -113,8 +112,7 @@ risk_forecast <- function(
   max_events = 1000,
   seed = NULL,
   backend = c("none", "mclapply", "future"),
-  n_workers = NULL,
-  ctx_base = NULL
+  n_workers = NULL
 ) {
   backend <- match.arg(backend)
   if (inherits(patients, "Patient")) patients <- list(p1 = patients)
@@ -138,7 +136,6 @@ risk_forecast <- function(
     if (!is.list(param_sets) || length(param_sets) < 1L) stop("param_sets must be a non-empty list of parameter lists.", call. = FALSE)
   }
 
-  if (!is.null(ctx_base) && !is.list(ctx_base)) stop("ctx_base must be a list or NULL.", call. = FALSE)
   if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list or NULL.", call. = FALSE)
 
   N <- length(patients)
@@ -159,7 +156,7 @@ risk_forecast <- function(
     p0 <- patients[[pid]]
     p <- p0$clone(deep = TRUE)
 
-    ctx_run <- if (is.null(ctx_base)) list() else ctx_base
+    ctx_run <- if (is.null(ctx)) list() else ctx
     ctx_run$params <- param_sets[[did]]
 
     out <- engine$run(
@@ -179,7 +176,7 @@ risk_forecast <- function(
       terminal_events = terminal_events,
       condition_on_events = condition_on_events,
       eligible = eligible,
-      ctx = ctx
+      ctx = ctx_run
     )
 
     if (!isTRUE(eligible0)) {
@@ -273,8 +270,7 @@ state_summary_forecast <- function(
   max_events = 1000,
   seed = NULL,
   backend = c("none", "mclapply", "future"),
-  n_workers = NULL,
-  ctx_base = NULL
+  n_workers = NULL
 ) {
   backend <- match.arg(backend)
   if (missing(vars) || is.null(vars) || length(vars) < 1L) stop("vars must be a non-empty character vector.", call. = FALSE)
@@ -297,7 +293,6 @@ state_summary_forecast <- function(
     if (!is.list(param_sets) || length(param_sets) < 1L) stop("param_sets must be a non-empty list of parameter lists.", call. = FALSE)
   }
 
-  if (!is.null(ctx_base) && !is.list(ctx_base)) stop("ctx_base must be a list or NULL.", call. = FALSE)
   if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list or NULL.", call. = FALSE)
 
   N <- length(patients)
@@ -330,7 +325,7 @@ state_summary_forecast <- function(
     p0 <- patients[[pid]]
     p <- p0$clone(deep = TRUE)
 
-    ctx_run <- if (is.null(ctx_base)) list() else ctx_base
+    ctx_run <- if (is.null(ctx)) list() else ctx
     ctx_run$params <- param_sets[[did]]
 
     out <- engine$run(
@@ -350,7 +345,7 @@ state_summary_forecast <- function(
       terminal_events = terminal_events,
       condition_on_events = condition_on_events,
       eligible = eligible,
-      ctx = ctx
+      ctx = ctx_run
     )
 
     if (!isTRUE(eligible0)) return(NULL)
@@ -411,12 +406,29 @@ state_summary_forecast <- function(
   rows <- split(grid, seq_len(nrow(grid)))
   run_fun <- function(i) one_run(rows[[i]])
 
-  if (isTRUE(parallel) && .Platform$OS.type != "windows") {
-    ncores <- if (is.null(n_workers)) max(1L, parallel::detectCores() - 1L) else as.integer(n_workers)
-    outs <- parallel::mclapply(seq_along(rows), run_fun, mc.cores = ncores)
-  } else {
-    outs <- lapply(seq_along(rows), run_fun)
-  }
+  outs <- switch(
+    backend,
+    none = lapply(seq_along(rows), run_fun),
+    mclapply = {
+      if (.Platform$OS.type == "windows") stop("backend='mclapply' is not supported on Windows.", call. = FALSE)
+      if (!requireNamespace("parallel", quietly = TRUE)) stop("backend='mclapply' requires base R 'parallel'.", call. = FALSE)
+      ncores <- if (is.null(n_workers)) max(1L, parallel::detectCores() - 1L) else as.integer(n_workers)
+      if (!is.finite(ncores) || ncores < 1L) stop("n_workers must be a positive integer.", call. = FALSE)
+      parallel::mclapply(seq_along(rows), run_fun, mc.cores = ncores)
+    },
+    future = {
+      if (!requireNamespace("future.apply", quietly = TRUE)) stop("backend='future' requires the 'future.apply' package.", call. = FALSE)
+      if (!requireNamespace("future", quietly = TRUE)) stop("backend='future' requires the 'future' package.", call. = FALSE)
+      old_plan <- future::plan()
+      on.exit(future::plan(old_plan), add = TRUE)
+      if (!is.null(n_workers)) {
+        n_workers <- as.integer(n_workers)
+        if (!is.finite(n_workers) || n_workers < 1L) stop("n_workers must be a positive integer.", call. = FALSE)
+        future::plan(future::multisession, workers = n_workers)
+      }
+      future.apply::future_lapply(seq_along(rows), run_fun)
+    }
+  )
 
   n_eligible_total <- 0L
   num_tot <- blank_num_part()

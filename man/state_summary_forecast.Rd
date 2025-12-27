@@ -10,8 +10,8 @@ Binary/categorical variables return level proportions.
 \usage{
 state_summary_forecast(engine, patients, times, vars, S = 200, param_sets = NULL,
   start_time = NULL, terminal_events = NULL, condition_on_events = NULL,
-  eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL, parallel = FALSE,
-  n_workers = NULL, ctx_base = NULL)
+  eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL,
+  backend = c("none", "mclapply", "future"), n_workers = NULL)
 }
 \arguments{
 \item{engine}{A patientSimCore Engine.}
@@ -27,9 +27,8 @@ state_summary_forecast(engine, patients, times, vars, S = 200, param_sets = NULL
 \item{ctx}{Optional list passed to \code{eligible()}.}
 \item{max_events}{Maximum events per run.}
 \item{seed}{Optional base seed.}
-\item{parallel}{Logical; if TRUE uses \code{parallel::mclapply} when available.}
-\item{n_workers}{Number of workers for mclapply.}
-\item{ctx_base}{Optional list of ctx fields besides params passed to Engine$run().}
+\item{backend}{Parallel backend. One of \code{c('none','mclapply','future')}.}
+\item{n_workers}{Optional number of workers for \code{mclapply} or an ephemeral \code{future::multisession} plan.}
 }
 \value{
 A list with elements \code{meta}, \code{numeric} (named list of data frames), and

@@ -11,7 +11,7 @@ represented with other state variables (e.g., \code{active_followup}).
 forecast(engine, patients, times, S = 200, param_sets = NULL, vars = NULL,
          max_events = 1000, seed = NULL, parallel = FALSE, n_workers = NULL,
          return = c("object", "summary_stats", "none"), summary_stats = NULL,
-         summary_spec = NULL, ctx_base = NULL)
+         summary_spec = NULL, ctx = NULL)
 }
 \arguments{
   \item{engine}{A patientSimCore Engine.}
@@ -36,7 +36,7 @@ forecast(engine, patients, times, S = 200, param_sets = NULL, vars = NULL,
   \code{return="summary_stats"}. For \code{summary_stats="risk"} this is passed
   to \code{risk_forecast()}. For \code{summary_stats="state"} this is passed to
   \code{state_summary_forecast()}.}
-  \item{ctx_base}{Optional list of ctx fields besides params (reserved).}
+  \item{ctx}{Optional simulation context. Either a single list merged into each run ctx, or a list of per-parameter-set ctx lists. Each per-draw ctx may include its own \code{$params}; if so, that overrides \code{param_sets}.}
 }
 \value{
 A \code{ps_forecast} object when \code{return="object"}.

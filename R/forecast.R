@@ -12,13 +12,11 @@
 #' @param vars Character vector of snapshot variables to store. 'alive' is always included.
 #' @param max_events Passed to Engine$run().
 #' @param seed Optional base seed for deterministic per-run seeds.
-#' @param backend Parallel backend. One of c('none','cluster','future').
-#'   One of c('none','mclapply','cluster','future').
+#' @param backend Parallel backend. One of c('none','mclapply','cluster','future').
 #'   - 'none': run serially.
 #'   - 'mclapply': use parallel::mclapply (macOS/Linux; not Windows).
-#'   - 'cluster': use patientSimCore::run_cohort(parallel=TRUE), which uses a PSOCK cluster.
-#'   - 'future': use future.apply::future_lapply for summary_stats modes (recommended for cloud/Databricks).
-#'     Note: return='object' currently supports 'none' and 'cluster' only.
+#'   - 'cluster': use a PSOCK cluster via patientSimCore::run_cohort(backend='cluster').
+#'   - 'future': use future.apply::future_lapply via patientSimCore::run_cohort(backend='future').
 #' @param n_workers Optional number of workers.
 #' @param return One of c('object','summary_stats','none').
 #' @param summary_stats If return='summary_stats', a character vector of summaries to compute.
@@ -26,7 +24,10 @@
 #' @param summary_spec If return='summary_stats', a named list describing the summary to compute.
 #'   For summary_stats='risk', this is passed to risk_forecast().
 #'   For summary_stats='state', this is passed to state_summary_forecast().
-#' @param ctx_base Optional list of ctx fields to pass to Engine$run() besides params.
+#' @param ctx Optional simulation context. Can be either:
+#'   - a single list merged into ctx for every run, or
+#'   - a list of per-parameter-set ctx lists (length equal to length(param_sets)).
+#'     Each per-draw ctx may include its own $params; if so, that overrides param_sets.
 #'
 #' @return A ps_forecast object if return='object'. If return='summary_stats', returns a list
 #'   of summary objects. If return='none', returns invisible(NULL).
@@ -46,7 +47,7 @@ forecast <- function(
   return = c("object", "summary_stats", "none"),
   summary_stats = c("both", "risk", "state"),
   summary_spec = NULL,
-  ctx_base = NULL
+  ctx = NULL
 ) {
   backend <- match.arg(backend)
   return <- match.arg(return)
@@ -80,26 +81,21 @@ forecast <- function(
 
   horizon <- max(times)
 
-  # Build wrapper ctx that is merged in per-run inside run_cohort (via ctx$params)
-  # We use ctx_base by injecting into Engine$run via ctx within run_cohort.
-  if (!is.null(ctx_base) && !is.list(ctx_base)) stop("ctx_base must be a list or NULL.", call. = FALSE)
-  if (is.null(ctx_base$time_unit)) ctx_base$time_unit <- "unitless"
+  if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list, a list of lists, or NULL.", call. = FALSE)
 
   # Use patientSimCore::run_cohort to run R = N * P * S simulations.
-  if (return == "object" && (identical(backend, "future") || identical(backend, "mclapply"))) {
-    stop("backend must be 'none' or 'cluster' when return='object'. Use backend='future' or 'mclapply' with return='summary_stats'.", call. = FALSE)
-  }
 
-out <- suppressWarnings(patientSimCore::run_cohort(
+  out <- suppressWarnings(patientSimCore::run_cohort(
     engine = engine,
     patients = patients,
     n_param_draws = P,
     n_sims = S,
     param_draws = param_sets,
+    ctx = ctx,
     max_events = max_events,
     max_time = horizon,
     return_observations = FALSE,
-    parallel = identical(backend, "cluster"),
+    backend = backend,
     n_workers = n_workers,
     seed = seed
   ))
@@ -191,7 +187,7 @@ out <- suppressWarnings(patientSimCore::run_cohort(
 
   meta <- list(
     patient_levels = patient_levels,
-    ctx_base = ctx_base,
+    ctx = ctx,
     seed = seed,
     S = S,
     P = P
