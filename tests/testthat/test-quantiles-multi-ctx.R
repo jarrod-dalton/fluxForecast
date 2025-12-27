@@ -5,13 +5,10 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
 
   # Extend the default schema with a numeric state variable we will track.
   schema <- patientSimCore::default_patient_schema()
-  schema <- patientSimCore::set_vars(
-    schema,
-    x = list(
-      default = 0,
-      coerce = as.numeric,
-      validate = function(v) length(v) == 1L && is.finite(v)
-    )
+  schema[["x"]] <- list(
+    default = 0,
+    coerce = as.numeric,
+    validate = function(v) length(v) == 1L && is.finite(v)
   )
 
   # Deterministic tick process:
