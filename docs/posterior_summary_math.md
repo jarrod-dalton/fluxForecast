@@ -1,180 +1,305 @@
-# Posterior summary math (patientSimForecast)
 
-This note describes how **risk**, **event-free/survival**, and **state** summaries are computed from simulated trajectories produced by `patientSimCore`.
+# Posterior summary mathematics in `patientSimForecast`
 
-These summaries are **Monte Carlo functionals of the simulated process implied by your model**. They are not “estimators” from observed event-time data (so they intentionally do not follow Kaplan–Meier / Aalen–Johansen step-by-step risk-set updates).
+This document describes how `patientSimForecast` constructs posterior summaries from simulated trajectories produced by `patientSimCore`. These summaries are **empirical functionals of simulated runs**, not estimators derived from hazard models.
 
-## Notation
+The emphasis throughout is on:
+- clarity of denominators,
+- explicit conditioning rules, and
+- predictable behavior under terminal events and competing risks.
 
-For a given patient and a given simulation run (a particular draw/parameter set/seed combination), the engine produces a trajectory with:
+---
 
-- a sequence of event times (nondecreasing) and event types
-- a time-varying state `X(t)` (stored sparsely at event times, but queryable at arbitrary `t` via `state_at_time()` semantics)
+## Notation and setup
 
-Let the user-requested evaluation times be `times = {t1, t2, ..., tK}` (sorted increasingly). Let the simulation’s natural start time be `t_start` (the engine’s `time0` for the patient/run). In general, `t_start` and `t1` may differ.
+Assume a forecast produces:
 
-## Common ingredients
+- `S` simulation runs per patient per parameter set
+- indexed by `s = 1, …, S`
+- with event histories observed over time
 
-### Eligibility
+Let:
+- `T_e(s)` denote the *first occurrence time* of event `e` in run `s` (or `∞` if it never occurs),
+- `A(s, t)` indicate whether run `s` is alive at time `t`,
+- `F(s, t)` indicate whether run `s` is in active follow-up at time `t`.
 
-All posterior summaries rely on an **eligibility indicator** (a run can contribute to a summary at time `t` only if it is eligible at `t`). Conceptually:
+All summaries are evaluated on a user-supplied reporting grid:
 
-- `alive(t)` must be TRUE
-- `in_followup(t)` must be TRUE (unless you intentionally choose to ignore follow-up)
-- optionally, additional event-free conditions can be enforced at a baseline time (see below)
+```
+times = (t₁, t₂, …, t_K)
+```
 
-The package keeps the eligibility logic explicit because it is easy to build models that stop tracking individuals (terminal events) or have intermittent follow-up. Those design choices directly change what a “risk” curve means.
+---
 
-### Baseline time for denominators
+## Simulation origin vs summary reference time
 
-Many “risk” curves are defined with a **fixed baseline denominator** at some baseline time `t0`.
+A critical distinction in `patientSimForecast` is between:
 
-Important nuance: in `patientSimForecast`, `t0` is a *summary baseline*, not automatically the simulation’s `t_start`.
+### Simulation origin
+- The time at which the simulation begins (e.g., time 0, age 40, transplant date).
+- Determined entirely by the model and engine.
+- No events can occur before this time.
 
-- By default, `t0` is taken as the first element of `times` (i.e., `t0 = t1`).
-- You can conceptually think of this as: “Among the runs eligible at the first reporting time, what fraction have had the event by later reporting times?”
+### Summary reference time
+- The time at which **denominators** for risk and survival summaries are defined.
+- This is *not* automatically the simulation origin.
 
-Why this default?
+In survival-analysis language, this is **not a “baseline hazard” concept**. It is purely a reference point for conditioning.
 
-- The forecast functions are often used with a reporting grid like `times = 1:10` or `times = c(1, 3, 5, 10)` where the user intends `t1` to be the start of the forecast window.
-- Models sometimes initialize at time 0 (or an age) but the analyst only wants forecasts for a later window.
+---
 
-If you want the denominator to be defined at the simulation start, you should pass `times` such that the first element aligns to your intended baseline, or use `start_time` / eligibility arguments in the forecast helpers.
+## Summary reference time for denominators
 
-## Risk and event-free/survival summaries
+Risk and survival summaries are defined relative to a **summary reference time**, denoted `t_ref`.
 
-### Event time definitions
+The rules are:
 
-For an event type `E` (e.g., `"tx"`, `"death"`, `"stroke"`), define for each run the **first occurrence time**:
+```
+t_ref = start_time   if start_time is supplied
+t_ref = times[1]     otherwise
+```
 
-- `T_E = inf` if event `E` never occurs in the simulated trajectory
-- otherwise `T_E = min{ t : event_type(t) == E }`
+Eligibility conditions are evaluated **once**, at `t_ref`.
 
-Also define a follow-up indicator `F(t)` that is TRUE when the run is considered “observable” at time `t` (e.g., `in_followup(t)`).
+This answers the question:
 
-### Risk (cumulative incidence) for a single event
+> “Among runs eligible at the start of the reporting window, what fraction experience the event by later reporting times?”
 
-With a fixed baseline denominator at `t0`, define baseline eligibility:
+---
 
-- `Elig0 = 1{ alive(t0) & F(t0) & (optional baseline event-free conditions) }`
+## Why `times[1]` is the default reference
 
-Then risk at time `t` is estimated as:
+The `times` argument is a **reporting grid**, not a declaration of when the simulation begins.
 
-- `Risk_E(t) = mean( 1{T_E <= t} | Elig0 == 1 )`
+Typical usage looks like:
 
-Operationally: among runs eligible at `t0`, what proportion have experienced `E` by `t`.
+```
+times = c(1, 3, 5, 10)
+```
 
-This is *not* computed as `1 - n(event_free at t) / n(at risk at t)` with a time-varying denominator, and it is not a product-limit estimator. It is simply the Monte Carlo probability implied by your simulation.
+Here, analysts usually intend:
+- the forecast window to begin at time 1, and
+- summaries to be interpreted relative to that window.
 
-### Event-free / survival-style curves
+Requiring `times = c(0, 1, 3, 5, 10)` just to define denominators at time 0 would:
+- inflate forecast objects,
+- produce redundant zero-risk outputs,
+- and obscure the intended reporting window.
 
-For a single event type `E`, the “event-free” curve is:
+Using `times[1]` as the default summary reference keeps outputs compact and semantically aligned with user intent.
 
-- `EventFree_E(t) = mean( 1{T_E > t} | Elig0 == 1 )`
+---
 
-So (up to Monte Carlo error):
+## When to use `start_time`
 
-- `Risk_E(t) + EventFree_E(t) = 1`.
+If you want denominators defined at the **simulation origin** (or any earlier time) *without* reporting values there, use `start_time`.
 
-### Why this differs from Kaplan–Meier / Aalen–Johansen
+Example:
 
-Kaplan–Meier (and Aalen–Johansen for competing risks) is a **nonparametric estimator from observed, censored event-time data**. Its denominator (“number at risk”) changes at each event time because the dataset is incomplete and censoring must be handled carefully.
+```
+times      = c(1, 3, 5, 10)
+start_time = 0
+```
 
-Here you already have a **generative model** that produces full trajectories (subject to the model’s own follow-up/terminal rules). The most direct posterior summary is simply:
+This defines eligibility at time 0 while reporting summaries only at later times.
 
-- probability of the event by time `t` under the model.
+---
 
-If your model includes intermittent follow-up or terminal stops, those features are part of the generative process, and the summary should reflect them.
+## Eligibility at the reference time
 
-## Competing risks and whether CIFs sum to 1
+A run `s` is eligible at `t_ref` if all required conditions hold, for example:
 
-Suppose you have mutually exclusive event types `{E1, ..., EJ}` and (crucially) the simulation **continues tracking** until exactly one of these events occurs, or until administrative end-of-horizon.
+- `A(s, t_ref) = TRUE` (alive)
+- `F(s, t_ref) = TRUE` (in follow-up)
+- optional event-free conditions (e.g., no prior MI)
 
-If:
+Let:
 
-1. every run that is eligible at `t0` remains in follow-up (`F(t)=TRUE`) up to the horizon or until an event happens, and
-2. exactly one of the competing events is guaranteed to occur eventually (or you include an additional terminal state like “none by horizon” as an event type), and
-3. the event types are defined as the *first* occurrence (so they are mutually exclusive by construction),
+```
+E = { s : s is eligible at t_ref }
+N = |E|
+```
 
-then:
+All denominators are based on `N`, unless explicitly stated otherwise.
 
-- the CIFs `Risk_Ej(t)` will sum to 1 as `t` approaches the horizon where one of the events is certain.
+---
 
-However, in many simulation models, **other terminal events can stop the trajectory** (e.g., a model “ends” at MI). In that case:
+## Risk summaries
 
-- A stroke that would have occurred after an MI is not recorded because the model did not simulate beyond MI.
-- The CIF for stroke, as computed above, is therefore the probability of stroke occurring **before the simulation terminates** (which may be MI).
+### Definition
 
-That can be exactly what you want (it matches the model definition), but it is easy to misinterpret.
+For an event type `e`, the **risk** at time `t_k` is:
 
-### Important warning about terminal events
+```
+Risk_e(t_k) = (1 / N) * Σ_{s ∈ E} I(T_e(s) ≤ t_k)
+```
 
-If your model stops tracking the process at a terminal event `T` (for example, MI), then any event `E` that can occur after `T` in reality cannot be counted after `T` because the trajectory is no longer simulated.
+That is:
+- the proportion of eligible runs whose *first occurrence* of event `e`
+- occurs at or before `t_k`.
 
-In that situation, `Risk_E(t)` should be interpreted as:
+### Key properties
 
-- `P( T_E <= t AND T_E occurs before termination )` among runs eligible at `t0`.
+- The denominator is **fixed at `t_ref`**
+- There is **no redefinition of the risk set** over time
+- This is not a Kaplan–Meier or hazard-based estimator
 
-Equivalently, it is the CIF for `E` in a competing risks system that includes the terminal event(s) as competing endpoints.
+Risk curves are monotone non-decreasing by construction.
 
-If you want a CIF for stroke that includes strokes after MI, the simulation must continue after MI (or MI must not be terminal for stroke).
+---
 
-## Handling intermittent follow-up
+## Survival summaries
 
-If a run can drop out of follow-up and later re-enter, you must choose what “risk” means.
+For a single event `e`, survival is defined as the complement:
 
-The current default pattern in `patientSimForecast` is:
+```
+Survival_e(t_k) = 1 − Risk_e(t_k)
+```
 
-- baseline denominator is fixed at `t0` using `Elig0`
-- subsequent times `t` do not change the denominator
+Equivalently:
 
-This implies you are estimating:
+```
+Survival_e(t_k) = (1 / N) * Σ_{s ∈ E} I(T_e(s) > t_k)
+```
 
-- probability of the event by time `t` among those eligible at `t0`, regardless of later follow-up gaps.
+This represents the proportion of eligible runs that remain event-free through `t_k`.
 
-That is coherent as a model-implied probability, but it implicitly treats events during out-of-follow-up periods as “still happening” if the model simulates them.
+---
 
-If instead your model treats out-of-follow-up as “unobservable” (events can occur but would not be recorded), then you should:
+## Relation to Kaplan–Meier
 
-- either incorporate that into the simulation itself (so events are not generated/recorded while out of follow-up), or
-- define eligibility in a way that conditions on being in follow-up at relevant times (e.g., using `eligible` or baseline conditioning rules).
+Kaplan–Meier estimation:
+- redefines the risk set at every observed event time,
+- conditions on having survived up to that time,
+- estimates a survival function via hazards.
 
-In short: follow-up behavior should be encoded consistently between the model and the summary.
+`patientSimForecast` does **none** of these.
 
-## State summaries
+Instead, it reports **direct empirical proportions** from simulated trajectories, conditioned once at `t_ref`.
 
-State summaries are computed from `X(t)` at each requested time `t` across simulation runs.
+This design is intentional:
+- it avoids hazard modeling assumptions,
+- it aligns naturally with forward simulation,
+- and it produces stable denominators for comparison across scenarios.
 
-### Which runs contribute at time t
+---
 
-For state summaries we use time-specific eligibility:
+## Competing risks and CIFs
 
-- `Elig(t) = 1{ alive(t) & F(t) }` (plus any user-specified `eligible` filter)
+For multiple event types `{e₁, e₂, …}`, the **cumulative incidence function (CIF)** for event `e_j` is:
 
-Then state summaries at time `t` use only runs with `Elig(t)==1`.
+```
+CIF_j(t_k) = (1 / N) * Σ_{s ∈ E} I(T_{e_j}(s) ≤ t_k)
+```
 
-### Variable typing rules
+### Important consequence
 
-The state summary logic uses the following pragmatic typing rules:
+Because each run contributes **at most one first event**:
 
-- treat as **categorical** if the variable is `logical`, `character`, `factor`, or an `integer` with unique values exactly `{0, 1}`
-- otherwise treat as **continuous** if the variable is `numeric`, or an `integer` not satisfying the `{0,1}` rule
+```
+Σ_j CIF_j(t_k) ≤ 1
+```
 
-(If you want stricter behavior, the safest approach is to provide an explicit `summary_spec` so the package doesn’t guess.)
+Equality holds only if *every* eligible run experiences *some* modeled event by `t_k`.
 
-### Summary statistics
+This avoids the non-additivity issues seen in hazard-based competing-risks models (e.g., cause-specific Cox or Fine–Gray).
 
-For each time `t` and each variable:
+---
 
-- **Categorical**: report proportions by observed level/value among eligible runs at `t`.
-  - Missing values are treated as their own category only if they appear explicitly in the data (otherwise they are dropped from the denominator).
-- **Continuous**: report `n`, `mean`, `sd`, `min`, `q1`, `median`, `q3`, `max` among eligible runs at `t`.
+## Terminal events and model scope
 
-### Coupling with risk summaries
+A crucial modeling choice is that **simulations stop tracking outcomes after terminal events**.
 
-When `forecast(..., return = "summary_stats", summary_stats = "both")` is used:
+Example:
+- If MI is terminal in the model,
+- and stroke could occur after MI in reality,
+- then stroke events after MI **cannot appear** in the simulation.
 
-- risk and state summaries are computed from the **same set of simulation runs** (same seed, backend plan, parameter set indexing, etc.)
-- the only difference is the eligibility logic and the functional applied to each run’s trajectory
+As a result:
+- Stroke CIFs are interpreted as  
+  *“incidence of stroke before MI (or other terminal events)”*.
+- CIFs do **not** represent marginal lifetime incidence unless the model explicitly tracks all outcomes indefinitely.
 
-This guarantees internal consistency (e.g., if a run is not alive at time `t`, it cannot contribute to state summaries at `t`).
+This behavior is correct given the model, but it must be understood by the analyst.
+
+---
+
+## Follow-up gaps and eligibility
+
+If a run leaves follow-up before `t_k`:
+- it does **not** contribute an event after that time,
+- but it **remains in the denominator** if it was eligible at `t_ref`.
+
+This mirrors a policy-style estimand:
+- outcomes are attributed to the baseline-eligible cohort,
+- not dynamically reweighted by later censoring.
+
+---
+
+## State variable summaries
+
+In addition to event summaries, `patientSimForecast` can summarize **state variables** at each reporting time.
+
+### Variable classification
+
+Variables are classified as:
+
+**Categorical**
+- logical
+- character
+- factor
+- integer with unique values `{0, 1}`
+
+**Continuous**
+- numeric
+- integer variables not restricted to `{0, 1}`
+
+---
+
+### Categorical state summaries
+
+For a categorical variable `X` with levels `{ℓ₁, …, ℓ_m}`:
+
+```
+P(X = ℓ_j at t_k) =
+  (1 / M_k) * Σ I(X(s, t_k) = ℓ_j)
+```
+
+where `M_k` is the number of runs with observed state at `t_k`.
+
+Outputs are proportions by level.
+
+---
+
+### Continuous state summaries
+
+For continuous variables, summaries include:
+
+- mean
+- standard deviation
+- minimum
+- first quartile (Q1)
+- median
+- third quartile (Q3)
+- maximum
+
+All are computed empirically across runs with observed state at `t_k`.
+
+---
+
+## Summary
+
+`patientSimForecast` produces:
+- **fixed-denominator**, policy-style summaries,
+- directly from simulated trajectories,
+- with explicit conditioning and no hazard modeling.
+
+Key takeaways:
+- Denominators are defined once, at a summary reference time.
+- Risk and survival are empirical proportions, not estimators.
+- CIFs are additive by construction.
+- Terminal events define the scope of what can be counted.
+- State summaries follow transparent, type-based rules.
+
+Understanding these design choices is essential for correct interpretation.
+
