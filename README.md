@@ -57,7 +57,7 @@ out <- forecast(
 This currently supports:
 
 - `backend = "none"`: serial
-- `backend = "cluster"`: PSOCK cluster via `patientSimCore::run_cohort(parallel=TRUE)`
+- `backend = "cluster"`: PSOCK cluster via `patientSimCore::run_cohort(backend="cluster")`
 
 For large-scale parallel work, prefer the memory-light summary paths above.
 
