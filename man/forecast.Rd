@@ -9,8 +9,10 @@ represented with other state variables (e.g., \code{active_followup}).
 }
 \usage{
 forecast(engine, patients, times, S = 200, param_sets = NULL, vars = NULL,
-         max_events = 1000, seed = NULL, parallel = FALSE, n_workers = NULL,
-         return = c("object", "summary_stats", "none"), summary_stats = NULL,
+         max_events = 1000, seed = NULL,
+         backend = c("none", "mclapply", "cluster", "future"), n_workers = NULL,
+         return = c("object", "summary_stats", "none"),
+         summary_stats = c("both", "risk", "state"),
          summary_spec = NULL, ctx = NULL)
 }
 \arguments{
@@ -22,12 +24,12 @@ forecast(engine, patients, times, S = 200, param_sets = NULL, vars = NULL,
   \item{vars}{Snapshot variables to store; \code{alive} is always included.}
   \item{max_events}{Maximum number of events per run.}
   \item{seed}{Optional base seed.}
-  \item{backend}{Parallel backend. One of \code{c("none","mclapply","cluster","future")}.
+  \item{backend}{Parallel backend. One of \code{c("none","mclapply","cluster","future")}. 
   \itemize{
     \item \code{"none"}: run serially.
     \item \code{"mclapply"}: use \code{parallel::mclapply} (macOS/Linux; not Windows).
-    \item \code{"cluster"}: PSOCK cluster via \code{patientSimCore::run_cohort(parallel=TRUE)} (only for \code{return="object"}).
-    \item \code{"future"}: \code{future.apply::future_lapply} for \code{return="summary_stats"} (recommended for cloud/Databricks).
+    \item \code{"cluster"}: PSOCK cluster via \code{patientSimCore::run_cohort(backend="cluster")}.
+    \item \code{"future"}: \code{future.apply::future_lapply} via \code{patientSimCore::run_cohort(backend="future")}.
   }}
   \item{n_workers}{Optional number of workers. For \code{backend="future"}, set workers via \code{future::plan()}.}
   \item{return}{One of \code{"object"}, \code{"summary_stats"}, or \code{"none"}.}
