@@ -166,7 +166,10 @@ forecast <- function(
         if (is.null(snap[["alive"]])) {
           stop("snapshot_at_time() did not return an 'alive' field. Ensure schema includes 'alive' (logical).", call. = FALSE)
         }
-        alive[i, tt] <- isTRUE(snap[["alive"]])
+        # Preserve NA if a model ever represents unknown vital status at a defined time.
+        # (Core v1.0 enforces alive is non-NA, but downstream code should be robust.)
+        av <- snap[["alive"]]
+        alive[i, tt] <- ps_na_safe_true1(av)
 
         for (v in vars) {
           val <- snap[[v]]

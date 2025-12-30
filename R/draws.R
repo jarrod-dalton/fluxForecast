@@ -66,7 +66,8 @@ draws <- function(
           i <- keep[[k]]
           snap <- lapply(x$vars, function(v) x$state[[v]][i, t_start_idx])
           names(snap) <- x$vars
-          ok[[k]] <- isTRUE(eligible(snap, start_time, ctx))
+          out <- eligible(snap, start_time, ctx)
+          ok[[k]] <- identical(out, TRUE)
         }
         elig[keep] <- ok
       }
@@ -130,5 +131,5 @@ draws <- function(
 
 # local helper shared with risk.R
 isTRUEorNA <- function(x) {
-  ifelse(is.na(x), NA, isTRUE(x))
+  ps_na_safe_true(x)
 }

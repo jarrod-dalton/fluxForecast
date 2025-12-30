@@ -54,7 +54,8 @@
   if (is.null(snap$alive)) {
     stop("snapshot_at_time() did not return an 'alive' field. Ensure schema includes 'alive' (logical).", call. = FALSE)
   }
-  if (!isTRUE(snap$alive)) return(FALSE)
+  # Treat NA as not eligible (unknown vital status at start_time).
+  if (is.na(snap$alive) || !identical(snap$alive, TRUE)) return(FALSE)
 
   if (!is.null(terminal_events)) {
     ft <- .first_event_time_any(events_df, terminal_events)
@@ -67,7 +68,8 @@
 
   if (!is.null(eligible)) {
     if (!is.function(eligible)) stop("eligible must be a function if provided.", call. = FALSE)
-    return(isTRUE(eligible(snap, start_time, ctx)))
+    out <- eligible(snap, start_time, ctx)
+    return(identical(out, TRUE))
   }
 
   TRUE
@@ -179,7 +181,7 @@ risk_forecast <- function(
       ctx = ctx_run
     )
 
-    if (!isTRUE(eligible0)) {
+    if (!ps_is_true1(eligible0)) {
       return(list(eligible = FALSE, contrib = integer(length(times))))
     }
 
@@ -215,7 +217,7 @@ risk_forecast <- function(
     }
   )
 
-  n_eligible <- sum(vapply(parts, function(z) isTRUE(z$eligible), logical(1)))
+  n_eligible <- sum(vapply(parts, function(z) ps_is_true1(z$eligible), logical(1)))
   if (n_eligible == 0L) {
     res <- data.frame(time = times, n_eligible = 0L, n_events = 0L, risk = NA_real_)
   } else {
@@ -348,7 +350,7 @@ state_summary_forecast <- function(
       ctx = ctx_run
     )
 
-    if (!isTRUE(eligible0)) return(NULL)
+    if (!ps_is_true1(eligible0)) return(NULL)
 
     # Eligible cohort contribution: accumulate within-run summaries.
     num_part <- blank_num_part()
@@ -364,7 +366,7 @@ state_summary_forecast <- function(
       t <- times[[tt]]
       if (p$last_time < t) next
       snap <- p$snapshot_at_time(t)
-      if (!isTRUE(snap$alive)) next
+      if (is.na(snap$alive) || !identical(snap$alive, TRUE)) next
       for (v in vars) {
         val <- snap[[v]]
         if (is.null(val)) next
@@ -378,12 +380,12 @@ state_summary_forecast <- function(
           bt <- bin_track[[v]]
           bt$min <- min(bt$min, val)
           bt$max <- max(bt$max, val)
-          if (!isTRUE(all.equal(val, round(val)))) bt$non_int <- TRUE
+          if (!ps_is_true1(all.equal(val, round(val)))) bt$non_int <- TRUE
           bin_track[[v]] <- bt
 
           # Also accumulate categorical counts for (0,1) values so we can
           # later decide whether this variable is truly binary.
-          if (isTRUE(all.equal(val, 0)) || isTRUE(all.equal(val, 1))) {
+          if (ps_is_true1(all.equal(val, 0)) || ps_is_true1(all.equal(val, 1))) {
             nm <- as.character(as.integer(val))
             slot <- cat_part[[v]][[tt]]
             if (is.null(slot)) slot <- integer(0)
@@ -451,7 +453,7 @@ state_summary_forecast <- function(
       obt <- o$bin_track[[v]]
       bt$min <- min(bt$min, obt$min)
       bt$max <- max(bt$max, obt$max)
-      bt$non_int <- isTRUE(bt$non_int) || isTRUE(obt$non_int)
+      bt$non_int <- ps_is_true1(bt$non_int) || ps_is_true1(obt$non_int)
       bin_tot[[v]] <- bt
 
       for (tt in seq_along(times)) {
@@ -488,7 +490,7 @@ state_summary_forecast <- function(
       slot <- cat_tot[[v]][[tt]]
       # If this var is not truly binary, drop accidental (0,1) counts collected from numeric values.
       bt <- bin_tot[[v]]
-      is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !isTRUE(bt$non_int) && bt$min >= 0 && bt$max <= 1
+      is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !ps_is_true1(bt$non_int) && bt$min >= 0 && bt$max <= 1
       if (!is_binary_numeric && !is.null(slot) && all(names(slot) %in% c('0','1'))) slot <- NULL
       if (is.null(slot) || length(slot) == 0L) next
       nn <- sum(slot)
