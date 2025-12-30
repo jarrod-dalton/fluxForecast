@@ -1,7 +1,7 @@
 Package: patientSimForecast
 Type: Package
 Title: Forecasting and Validation Tools for patientSimCore Simulations
-Version: 0.5.0
+Version: 1.0.0
 Author: Jarrod Dalton [aut, cre]
 Maintainer: Jarrod Dalton <jarrod.dalton@gmail.com>
 Authors@R: person(given = "Jarrod",
