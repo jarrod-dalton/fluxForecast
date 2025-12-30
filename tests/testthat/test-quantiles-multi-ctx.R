@@ -5,11 +5,6 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
 
   # Extend the default schema with a numeric state variable we will track.
   schema <- patientSimCore::default_patient_schema()
-  schema[["active_followup"]] <- list(
-    default = TRUE,
-    coerce = as.logical,
-    validate = function(v) length(v) == 1L && (isTRUE(v) || identical(v, FALSE))
-  )
   schema[["x"]] <- list(
     default = 0,
     coerce = as.numeric,
@@ -53,7 +48,7 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
 
   # One patient.
   pat <- patientSimCore::new_patient(
-    init = list(age = 40, alive = TRUE, active_followup = TRUE, x = 0),
+    init = list(age = 40, miles_to_work = 10, alive = TRUE, active_followup = TRUE, x = 0),
     schema = schema
   )
 
