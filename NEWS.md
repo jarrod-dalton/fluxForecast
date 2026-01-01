@@ -1,3 +1,8 @@
+## patientSimForecast 1.0.6
+
+- Fix: parsing error introduced in `state_summary.R`.
+- Keep: `risk_forecast(..., by=)` supports run-, patient-, and patient_draw-level summaries.
+
 ## patientSimForecast 1.0.4
 
 - Fix: parsing error in `risk()` argument list (escaped quotes).

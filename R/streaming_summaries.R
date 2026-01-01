@@ -104,6 +104,7 @@ risk_forecast <- function(
   patients,
   times,
   event,
+  by = c("run", "patient", "patient_draw"),
   S = 200,
   param_sets = NULL,
   start_time = NULL,
@@ -117,6 +118,7 @@ risk_forecast <- function(
   n_workers = NULL
 ) {
   backend <- match.arg(backend)
+  by <- match.arg(by)
   if (inherits(patients, "Patient")) patients <- list(p1 = patients)
   if (!is.list(patients) || length(patients) == 0L) stop("patients must be a non-empty list of Patient objects.", call. = FALSE)
   times <- sort(unique(as.numeric(times)))
@@ -182,12 +184,12 @@ risk_forecast <- function(
     )
 
     if (!ps_is_true1(eligible0)) {
-      return(list(eligible = FALSE, contrib = integer(length(times))))
+      return(list(eligible = FALSE, contrib = integer(length(times)), patient_id = row$patient_id, draw_id = row$param_set_id, sim_id = row$sim_id))
     }
 
     ft_event <- .first_event_time_any(ev, event)
     contrib <- as.integer(ft_event <= times)
-    list(eligible = TRUE, contrib = contrib)
+    list(eligible = TRUE, contrib = contrib, patient_id = row$patient_id, draw_id = row$param_set_id, sim_id = row$sim_id)
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -218,9 +220,23 @@ risk_forecast <- function(
   )
 
   n_eligible <- sum(vapply(parts, function(z) ps_is_true1(z$eligible), logical(1)))
+
+  group_cols <- switch(
+    by,
+    run = character(0),
+    patient = "patient_id",
+    patient_draw = c("patient_id", "draw_id")
+  )
+
   if (n_eligible == 0L) {
-    res <- data.frame(time = times, n_eligible = 0L, n_events = 0L, risk = NA_real_)
-  } else {
+    if (length(group_cols) == 0) {
+      res <- data.frame(time = times, n_eligible = 0L, n_events = 0L, risk = NA_real_)
+    } else {
+      res <- data.frame(time = numeric(0), n_eligible = integer(0), n_events = integer(0), risk = numeric(0), stringsAsFactors = FALSE)
+      for (gc in rev(group_cols)) res[[gc]] <- integer(0)
+      res <- res[, c(group_cols, "time", "n_eligible", "n_events", "risk"), drop = FALSE]
+    }
+  } else if (length(group_cols) == 0) {
     counts <- Reduce(`+`, lapply(parts, `[[`, "contrib"))
     res <- data.frame(
       time = times,
@@ -228,10 +244,54 @@ risk_forecast <- function(
       n_events = counts,
       risk = counts / n_eligible
     )
+  } else {
+    # aggregate by group
+    part_df <- data.frame(
+      patient_id = vapply(parts, function(z) z$patient_id, integer(1)),
+      draw_id = vapply(parts, function(z) z$draw_id, integer(1)),
+      eligible = vapply(parts, function(z) ps_is_true1(z$eligible), logical(1)),
+      stringsAsFactors = FALSE
+    )
+    part_df$key <- interaction(part_df[, group_cols, drop = FALSE], drop = TRUE, lex.order = TRUE)
+    idx_by <- split(seq_len(nrow(part_df)), part_df$key)
+
+    rows_out <- vector("list", length(idx_by))
+    ii <- 0L
+    for (k in names(idx_by)) {
+      ids <- idx_by[[k]]
+      elig_ids <- ids[part_df$eligible[ids]]
+      n_elig_k <- length(elig_ids)
+      if (n_elig_k == 0L) next
+      counts <- Reduce(`+`, lapply(parts[elig_ids], `[[`, "contrib"))
+      ii <- ii + 1L
+      # representative group values
+      grp_vals <- part_df[ids[1], group_cols, drop = FALSE]
+      dfk <- cbind(
+        grp_vals,
+        data.frame(time = times,
+                   n_eligible = rep.int(n_elig_k, length(times)),
+                   n_events = counts,
+                   risk = counts / n_elig_k,
+                   stringsAsFactors = FALSE)
+      )
+      rows_out[[ii]] <- dfk
+    }
+    rows_out <- rows_out[seq_len(ii)]
+    res <- if (length(rows_out) == 0L) {
+      tmp <- data.frame(time = numeric(0), n_eligible = integer(0), n_events = integer(0), risk = numeric(0), stringsAsFactors = FALSE)
+      for (gc in rev(group_cols)) tmp[[gc]] <- integer(0)
+      tmp <- tmp[, c(group_cols, setdiff(names(tmp), group_cols)), drop = FALSE]
+      tmp
+    } else {
+      outk <- do.call(rbind, rows_out)
+      rownames(outk) <- NULL
+      outk
+    }
   }
 
-  spec <- list(
+spec <- list(
     event = event,
+    by = by,
     times = times,
     start_time = start_time,
     terminal_events = terminal_events,
