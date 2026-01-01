@@ -57,9 +57,9 @@ make_toy_bundle <- function() {
 
 test_that("forecast -> risk() and survival() behave as expected", {
   schema <- list(
-    alive = list(default = TRUE, coerce = as.logical),
-    phase = list(default = "A", coerce = as.character),
-      x = list(default = 0, coerce = as.numeric)
+    alive = list(type = "binary", levels = c("FALSE","TRUE"), default = TRUE, coerce = as.logical),
+    phase = list(type = "categorical", levels = c("waitlist","transplanted","A","B"), default = "A", coerce = as.character),
+    x = list(type = "continuous", default = 0, coerce = as.numeric)
   )
 
   p <- patientSimCore::new_patient(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
@@ -96,9 +96,9 @@ test_that("forecast -> risk() and survival() behave as expected", {
 
 test_that("draws() returns a data.frame and respects times", {
   schema <- list(
-    alive = list(default = TRUE, coerce = as.logical),
-    phase = list(default = "A", coerce = as.character),
-      x = list(default = 0, coerce = as.numeric)
+    alive = list(type = "binary", levels = c("FALSE","TRUE"), default = TRUE, coerce = as.logical),
+    phase = list(type = "categorical", levels = c("waitlist","transplanted","A","B"), default = "A", coerce = as.character),
+    x = list(type = "continuous", default = 0, coerce = as.numeric)
   )
 
   p <- patientSimCore::new_patient(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)

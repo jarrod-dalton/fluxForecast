@@ -79,6 +79,19 @@ forecast <- function(
     vars <- unique(c(vars, "alive"))
   }
 
+  # Capture and validate schema metadata (sparse, stored once per forecast object).
+  # We require schemas to be identical across patients within a single forecast call.
+  schema0 <- patients[[1]]$schema
+  if (is.null(schema0) || !is.list(schema0) || is.null(names(schema0))) {
+    stop("patients[[1]] is missing a valid $schema.", call. = FALSE)
+  }
+  for (nm in names(patients)) {
+    sc <- patients[[nm]]$schema
+    if (!identical(sc, schema0)) {
+      stop("All patients passed to forecast() must share an identical schema.", call. = FALSE)
+    }
+  }
+
   horizon <- max(times)
 
   if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list, a list of lists, or NULL.", call. = FALSE)
@@ -103,6 +116,9 @@ forecast <- function(
   runs <- out$runs
   idx <- out$index
 
+  # Core guarantees that runs[[i]] corresponds to idx[i, ] (run_index alignment
+  # invariant). Forecast can therefore populate matrices directly in run order.
+
   # Map patient ids to integer IDs for compactness
   patient_levels <- unique(idx$patient_id)
   patient_id_int <- match(idx$patient_id, patient_levels)
@@ -110,6 +126,9 @@ forecast <- function(
   run_index <- data.frame(
     run_id = idx$run_id,
     patient_id = patient_id_int,
+    # Canonical naming for parameter draws in the ecosystem is draw_id.
+    draw_id = idx$draw_id,
+    # Back-compat alias (used in some early streaming code).
     param_set_id = idx$draw_id,
     sim_id = idx$sim_id,
     stringsAsFactors = FALSE
@@ -190,6 +209,7 @@ forecast <- function(
 
   meta <- list(
     patient_levels = patient_levels,
+    schema = schema0,
     ctx = ctx,
     seed = seed,
     S = S,

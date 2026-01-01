@@ -8,6 +8,7 @@ This returns a compact \code{ps_risk} object and avoids keeping a large
 }
 \usage{
 risk_forecast(engine, patients, times, S = 200, param_sets = NULL, event,
+              by = c("run", "patient", "patient_draw"),
   start_time = NULL, terminal_events = NULL, condition_on_events = NULL,
   eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL,
   n_workers = NULL)
@@ -19,6 +20,7 @@ risk_forecast(engine, patients, times, S = 200, param_sets = NULL, event,
 \item{S}{Simulations per (patient, param_set).}
 \item{param_sets}{Optional list of parameter lists.}
 \item{event}{Character vector of event types of interest.}
+  \item{by}{Grouping level for summaries. Default is \code{"run"}.}
 \item{start_time}{Scalar time in \code{times} defining the fixed eligible cohort.}
 \item{terminal_events}{Optional event types that must be absent by \code{start_time}.}
 \item{condition_on_events}{Optional event types that must be absent by \code{start_time}.}

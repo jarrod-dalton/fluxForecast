@@ -322,6 +322,7 @@ state_summary_forecast <- function(
   patients,
   times,
   vars,
+  by = c("run", "patient", "patient_draw"),
   S = 200,
   param_sets = NULL,
   start_time = NULL,
@@ -335,6 +336,7 @@ state_summary_forecast <- function(
   n_workers = NULL
 ) {
   backend <- match.arg(backend)
+  by <- match.arg(by)
   if (missing(vars) || is.null(vars) || length(vars) < 1L) stop("vars must be a non-empty character vector.", call. = FALSE)
   vars <- unique(as.character(vars))
 
@@ -462,7 +464,7 @@ state_summary_forecast <- function(
       }
     }
 
-    list(num = num_part, cat = cat_part, bin_track = bin_track)
+    list(eligible = TRUE, patient_id = pid, draw_id = did, sim_id = row$sim_id, num = num_part, cat = cat_part, bin_track = bin_track)
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -492,81 +494,139 @@ state_summary_forecast <- function(
     }
   )
 
-  n_eligible_total <- 0L
-  num_tot <- blank_num_part()
-  cat_tot <- blank_cat_part()
-  names(num_tot) <- vars
-  names(cat_tot) <- vars
+  # Group eligible run contributions
+  outs <- Filter(Negate(is.null), outs)
 
-  bin_tot <- stats::setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
+  group_cols <- switch(
+    by,
+    run = character(0),
+    patient = c("patient_id"),
+    patient_draw = c("patient_id", "draw_id")
+  )
 
-  for (o in outs) {
-    if (is.null(o)) next
-    n_eligible_total <- n_eligible_total + 1L
-    for (v in vars) {
-      num_tot[[v]]$n <- num_tot[[v]]$n + o$num[[v]]$n
-      num_tot[[v]]$sum <- num_tot[[v]]$sum + o$num[[v]]$sum
-      num_tot[[v]]$sumsq <- num_tot[[v]]$sumsq + o$num[[v]]$sumsq
-      num_tot[[v]]$min <- pmin(num_tot[[v]]$min, o$num[[v]]$min)
-      num_tot[[v]]$max <- pmax(num_tot[[v]]$max, o$num[[v]]$max)
-      bt <- bin_tot[[v]]
-      obt <- o$bin_track[[v]]
-      bt$min <- min(bt$min, obt$min)
-      bt$max <- max(bt$max, obt$max)
-      bt$non_int <- ps_is_true1(bt$non_int) || ps_is_true1(obt$non_int)
-      bin_tot[[v]] <- bt
+  key_of <- function(o) {
+    switch(
+      by,
+      run = "__all__",
+      patient = as.character(o$patient_id),
+      patient_draw = paste0(o$patient_id, "|", o$draw_id)
+    )
+  }
 
-      for (tt in seq_along(times)) {
-        slot <- o$cat[[v]][[tt]]
-        if (is.null(slot)) next
-        cur <- cat_tot[[v]][[tt]]
-        if (is.null(cur)) cur <- integer(0)
-        for (nm in names(slot)) {
-          cur[[nm]] <- (cur[[nm]] %||% 0L) + slot[[nm]]
+  outs_by_key <- split(outs, vapply(outs, key_of, character(1)))
+
+  # Helper to materialize one group
+  materialize_one_group <- function(outs_g, key) {
+    n_eligible_total <- 0L
+    num_tot <- blank_num_part()
+    cat_tot <- blank_cat_part()
+    names(num_tot) <- vars
+    names(cat_tot) <- vars
+    bin_tot <- stats::setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
+
+    for (o in outs_g) {
+      n_eligible_total <- n_eligible_total + 1L
+      for (v in vars) {
+        num_tot[[v]]$n <- num_tot[[v]]$n + o$num[[v]]$n
+        num_tot[[v]]$sum <- num_tot[[v]]$sum + o$num[[v]]$sum
+        num_tot[[v]]$sumsq <- num_tot[[v]]$sumsq + o$num[[v]]$sumsq
+        num_tot[[v]]$min <- pmin(num_tot[[v]]$min, o$num[[v]]$min)
+        num_tot[[v]]$max <- pmax(num_tot[[v]]$max, o$num[[v]]$max)
+
+        bt <- bin_tot[[v]]
+        obt <- o$bin_track[[v]]
+        bt$min <- min(bt$min, obt$min)
+        bt$max <- max(bt$max, obt$max)
+        bt$non_int <- ps_is_true1(bt$non_int) || ps_is_true1(obt$non_int)
+        bin_tot[[v]] <- bt
+
+        for (tt in seq_along(times)) {
+          slot <- o$cat[[v]][[tt]]
+          if (is.null(slot)) next
+          cur <- cat_tot[[v]][[tt]]
+          if (is.null(cur)) cur <- integer(0)
+          for (nm in names(slot)) {
+            cur[[nm]] <- (cur[[nm]] %||% 0L) + slot[[nm]]
+          }
+          cat_tot[[v]][[tt]] <- cur
         }
-        cat_tot[[v]][[tt]] <- cur
       }
     }
-  }
 
-  # Materialize outputs
-  numeric <- list()
-  for (v in vars) {
-    n <- num_tot[[v]]$n
-    sum <- num_tot[[v]]$sum
-    sumsq <- num_tot[[v]]$sumsq
-    mean <- ifelse(n > 0L, sum / n, NA_real_)
-    var <- ifelse(n > 1L, (sumsq - (sum * sum) / n) / (n - 1L), NA_real_)
-    sd <- sqrt(var)
-    mn <- ifelse(is.finite(num_tot[[v]]$min), num_tot[[v]]$min, NA_real_)
-    mx <- ifelse(is.finite(num_tot[[v]]$max), num_tot[[v]]$max, NA_real_)
-    numeric[[v]] <- data.frame(time = times, n = as.integer(n), mean = mean, sd = sd, min = mn, max = mx)
-  }
-
-  categorical <- list()
-  for (v in vars) {
-    rows_out <- list()
-    for (tt in seq_along(times)) {
-      slot <- cat_tot[[v]][[tt]]
-      # If this var is not truly binary, drop accidental (0,1) counts collected from numeric values.
-      bt <- bin_tot[[v]]
-      is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !ps_is_true1(bt$non_int) && bt$min >= 0 && bt$max <= 1
-      if (!is_binary_numeric && !is.null(slot) && all(names(slot) %in% c('0','1'))) slot <- NULL
-      if (is.null(slot) || length(slot) == 0L) next
-      nn <- sum(slot)
-      rows_out[[tt]] <- data.frame(
-        time = rep.int(times[[tt]], length(slot)),
-        level = names(slot),
-        n = as.integer(slot),
-        p = as.numeric(slot) / nn,
-        stringsAsFactors = FALSE
-      )
+    # Materialize numeric
+    numeric <- list()
+    for (v in vars) {
+      n <- num_tot[[v]]$n
+      sum <- num_tot[[v]]$sum
+      sumsq <- num_tot[[v]]$sumsq
+      mean <- ifelse(n > 0L, sum / n, NA_real_)
+      var <- ifelse(n > 1L, (sumsq - (sum * sum) / n) / (n - 1L), NA_real_)
+      sd <- sqrt(var)
+      mn <- ifelse(is.finite(num_tot[[v]]$min), num_tot[[v]]$min, NA_real_)
+      mx <- ifelse(is.finite(num_tot[[v]]$max), num_tot[[v]]$max, NA_real_)
+      numeric[[v]] <- data.frame(time = times, n = as.integer(n), mean = mean, sd = sd, min = mn, max = mx, stringsAsFactors = FALSE)
     }
-    categorical[[v]] <- if (length(rows_out) == 0L) data.frame(time = numeric(0), level = character(0), n = integer(0), p = numeric(0)) else do.call(rbind, rows_out)
+
+    # Materialize categorical
+    categorical <- list()
+    for (v in vars) {
+      rows_out <- list()
+      for (tt in seq_along(times)) {
+        slot <- cat_tot[[v]][[tt]]
+        bt <- bin_tot[[v]]
+        is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !ps_is_true1(bt$non_int) && bt$min >= 0 && bt$max <= 1
+        if (!is_binary_numeric && !is.null(slot) && all(names(slot) %in% c("0", "1"))) slot <- NULL
+        if (is.null(slot) || length(slot) == 0L) next
+        nn <- sum(slot)
+        rows_out[[tt]] <- data.frame(
+          time = rep.int(times[[tt]], length(slot)),
+          level = names(slot),
+          n = as.integer(slot),
+          p = as.numeric(slot) / nn,
+          stringsAsFactors = FALSE
+        )
+      }
+      categorical[[v]] <- if (length(rows_out) == 0L) data.frame(time = numeric(0), level = character(0), n = integer(0), p = numeric(0), stringsAsFactors = FALSE) else do.call(rbind, rows_out)
+    }
+
+    # Attach group columns
+    if (by != "run") {
+      if (by == "patient") {
+        pid <- outs_g[[1]]$patient_id
+        for (v in vars) {
+          numeric[[v]]$patient_id <- pid
+          numeric[[v]] <- numeric[[v]][, c("patient_id", setdiff(names(numeric[[v]]), "patient_id")), drop = FALSE]
+          categorical[[v]]$patient_id <- pid
+          categorical[[v]] <- categorical[[v]][, c("patient_id", setdiff(names(categorical[[v]]), "patient_id")), drop = FALSE]
+        }
+      } else if (by == "patient_draw") {
+        pid <- outs_g[[1]]$patient_id
+        did <- outs_g[[1]]$draw_id
+        for (v in vars) {
+          numeric[[v]]$patient_id <- pid
+          numeric[[v]]$draw_id <- did
+          numeric[[v]] <- numeric[[v]][, c("patient_id", "draw_id", setdiff(names(numeric[[v]]), c("patient_id","draw_id"))), drop = FALSE]
+          categorical[[v]]$patient_id <- pid
+          categorical[[v]]$draw_id <- did
+          categorical[[v]] <- categorical[[v]][, c("patient_id", "draw_id", setdiff(names(categorical[[v]]), c("patient_id","draw_id"))), drop = FALSE]
+        }
+      }
+    }
+
+    list(meta = list(n_eligible = n_eligible_total), numeric = numeric, categorical = categorical)
   }
+
+  per_group <- lapply(names(outs_by_key), function(k) materialize_one_group(outs_by_key[[k]], k))
+  names(per_group) <- names(outs_by_key)
+
+  # Bind groups
+  numeric <- stats::setNames(lapply(vars, function(v) do.call(rbind, lapply(per_group, function(g) g$numeric[[v]]))), vars)
+  categorical <- stats::setNames(lapply(vars, function(v) do.call(rbind, lapply(per_group, function(g) g$categorical[[v]]))), vars)
+
+  n_eligible_total <- sum(vapply(per_group, function(g) g$meta$n_eligible, integer(1)))
 
   list(
-    meta = list(times = times, start_time = start_time, n_eligible = n_eligible_total),
+    meta = list(times = times, start_time = start_time, n_eligible = n_eligible_total, by = by),
     numeric = numeric,
     categorical = categorical
   )

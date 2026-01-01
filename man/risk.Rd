@@ -3,12 +3,13 @@
 \title{Compute event risk curves from a forecast ensemble}
 \description{Compute cumulative event risk by time for a fixed cohort defined at a start time.}
 \usage{
-risk(x, event, times = NULL, start_time = NULL, terminal_events = NULL,
+risk(x, event, by = c("run", "patient", "patient_draw"), times = NULL, start_time = NULL, terminal_events = NULL,
      condition_on_events = NULL, eligible = NULL, ctx = NULL)
 }
 \arguments{
   \item{x}{A \code{ps_forecast}.}
   \item{event}{Character vector of event types of interest.}
+  \item{by}{Grouping level for summaries. See \code{state_summary} for definitions. Default is \code{"run"}.}
   \item{times}{Optional subset of forecast times.}
   \item{start_time}{Time in the forecast grid used to define the eligible cohort.}
   \item{terminal_events}{Optional event types that must be absent by \code{start_time}.}

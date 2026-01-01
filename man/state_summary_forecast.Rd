@@ -18,6 +18,7 @@ state_summary_forecast(engine, patients, times, vars, S = 200, param_sets = NULL
 \item{patients}{A list of Patient objects (or a single Patient).}
 \item{times}{Numeric vector of forecast times.}
 \item{vars}{Character vector of state/derived variable names to summarize.}
+\item{by}{Grouping level for summaries: \code{\"run\"} pools over all eligible runs; \code{\"patient\"} returns one curve per patient; \code{\"patient_draw\"} returns one curve per (patient, parameter set).}
 \item{S}{Simulations per (patient, param_set).}
 \item{param_sets}{Optional list of parameter lists.}
 \item{start_time}{Time in \code{times} to define the eligible cohort (default \code{min(times)}).}

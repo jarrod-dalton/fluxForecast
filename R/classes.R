@@ -70,6 +70,33 @@ validate_ps_forecast <- function(x) {
     stop("Length of event_types must match ncol(first_event_time).", call. = FALSE)
   }
 
+  # Schema metadata (required; stored sparsely once per forecast object).
+  if (is.null(x$meta) || !is.list(x$meta)) stop("ps_forecast$meta must be a list.", call. = FALSE)
+  schema <- x$meta$schema
+  if (is.null(schema) || !is.list(schema) || is.null(names(schema)) || any(names(schema) == "")) {
+    stop("ps_forecast$meta$schema must be a named list.", call. = FALSE)
+  }
+  allowed_types <- c("binary", "categorical", "ordinal", "continuous", "count")
+  for (v in x$vars) {
+    spec <- schema[[v]]
+    if (is.null(spec) || !is.list(spec)) {
+      stop(sprintf("ps_forecast$meta$schema is missing a spec for var '%s'.", v), call. = FALSE)
+    }
+    if (is.null(spec$type)) {
+      stop(sprintf("schema spec for '%s' must define $type.", v), call. = FALSE)
+    }
+    tp <- as.character(spec$type)
+    if (length(tp) != 1L || is.na(tp) || nchar(tp) == 0 || !(tp %in% allowed_types)) {
+      stop(sprintf("schema spec for '%s' has invalid $type.", v), call. = FALSE)
+    }
+    if (tp %in% c("binary", "categorical", "ordinal")) {
+      lev <- spec$levels
+      if (is.null(lev) || !is.character(lev) || length(lev) < 2L || any(is.na(lev)) || any(lev == "")) {
+        stop(sprintf("schema spec for '%s' must define $levels (character, length>=2) for type='%s'.", v, tp), call. = FALSE)
+      }
+    }
+  }
+
   invisible(TRUE)
 }
 
