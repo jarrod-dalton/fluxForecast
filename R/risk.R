@@ -19,6 +19,7 @@
 risk <- function(
   x,
   event,
+  by = c("run", "patient", "patient_draw"),
   times = NULL,
   start_time = NULL,
   terminal_events = NULL,
@@ -45,7 +46,9 @@ risk <- function(
   if (!is.finite(start_time) || length(start_time) != 1L) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% x$times) stop("start_time must be one of x$times (v1 restriction).", call. = FALSE)
 
-  # indices
+  by <- match.arg(by)
+
+# indices
   t_start_idx <- match(start_time, x$times)
   t_idx <- match(times, x$times)
 
@@ -109,13 +112,47 @@ risk <- function(
     }
   }
 
-  eligible_run_ids <- which(elig)
-  n_eligible <- length(eligible_run_ids)
-  if (n_eligible == 0L) {
+        
+spec <- list(
+  event = event,
+  times = times,
+  start_time = start_time,
+  terminal_events = terminal_events,
+  condition_on_events = condition_on_events,
+  by = by
+)
+
+eligible_run_ids <- which(elig)
+      n_eligible <- length(eligible_run_ids)
+
+      # grouping:
+      #   by = "run"         -> one curve pooling all eligible runs
+      #   by = "patient"     -> one curve per patient_id (averaging across that patient's eligible runs)
+      #   by = "patient_draw"-> one curve per (patient_id, draw_id)
+      group_cols <- switch(
+        by,
+        run = character(0),
+        patient = "patient_id",
+        patient_draw = c("patient_id", "draw_id")
+      )
+      if (length(group_cols) > 0 && !all(group_cols %in% names(x$run_index))) {
+        stop("ps_forecast$run_index must include required columns for by=.", call. = FALSE)
+      }
+
+      if (n_eligible == 0L) {
+  if (length(group_cols) == 0) {
     res <- data.frame(time = times, n_eligible = 0L, n_events = 0L, risk = NA_real_)
   } else {
-    # compute min time of any event in 'event'
-    ft_event <- first_time_any(event)
+    # return 0-row data.frame with required columns
+    res <- data.frame(time = numeric(0), n_eligible = integer(0), n_events = integer(0), risk = numeric(0))
+    for (gc in rev(group_cols)) {
+      res[[gc]] <- character(0)
+    }
+    # reorder so group cols come first
+    res <- res[, c(group_cols, "time", "n_eligible", "n_events", "risk"), drop = FALSE]
+  }
+} else if (length(group_cols) == 0) {
+ft_event <- first_time_any(event)
     n_events <- vapply(
       times,
       function(t) {
@@ -126,23 +163,34 @@ risk <- function(
       },
       integer(1)
     )
-    res <- data.frame(
-      time = times,
-      n_eligible = rep.int(n_eligible, length(times)),
-      n_events = n_events,
-      risk = n_events / n_eligible
-    )
-  }
+        res <- data.frame(time = times, n_eligible = n_eligible, n_events = n_events, risk = n_events / n_eligible)
+      } else {
+        idx_elig <- x$run_index[eligible_run_ids, group_cols, drop = FALSE]
+        # create a stable group key
+        grp <- interaction(idx_elig, drop = TRUE, lex.order = TRUE)
+        split_ids <- split(seq_along(eligible_run_ids), grp)
 
-  spec <- list(
-    event = event,
-    times = times,
-    start_time = start_time,
-    terminal_events = terminal_events,
-    condition_on_events = condition_on_events,
-    eligible_provided = !is.null(eligible),
-    denom = "fixed"
-  )
+        ft_event_all <- first_time_any(event)
+        ft_event_elig <- ft_event_all[eligible_run_ids]
+
+        rows <- vector("list", length(split_ids))
+        gi <- 0L
+        for (g in names(split_ids)) {
+          gi <- gi + 1L
+          pos <- split_ids[[g]]
+          run_ids_g <- eligible_run_ids[pos]
+          n_elig_g <- length(run_ids_g)
+          ft_g <- ft_event_elig[pos]
+          # count events by time (cumulative)
+          n_ev_g <- vapply(times, function(t) sum(!is.na(ft_g) & ft_g <= t), integer(1))
+          df_g <- cbind(idx_elig[pos[1], , drop = FALSE],
+                        data.frame(time = times, n_eligible = n_elig_g, n_events = n_ev_g, risk = n_ev_g / n_elig_g))
+          rownames(df_g) <- NULL
+          rows[[gi]] <- df_g
+        }
+        res <- do.call(rbind, rows)
+        rownames(res) <- NULL
+      }
 
   cohort <- list(
     eligible_run_ids = eligible_run_ids,
