@@ -1,3 +1,7 @@
+## patientSimForecast 1.0.25
+
+- Fix unit test schema in quantiles-multi-ctx to include age and miles_to_work.
+
 ## patientSimForecast 1.0.24
 
 - Update unit tests to build schemas from patientSimCore::default_patient_schema() (engine-level variables).

@@ -11,6 +11,9 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
     coerce = as.numeric,
     validate = function(v) length(v) == 1L && is.finite(v)
   )
+  schema[["age"]] <- list(type = "continuous", default = NA_real_, coerce = as.numeric, validate = function(v) length(v) == 1L && (is.na(v) || is.finite(v)))
+  schema[["miles_to_work"]] <- list(type = "continuous", default = NA_real_, coerce = as.numeric, validate = function(v) length(v) == 1L && (is.na(v) || is.finite(v)))
+
 
   # Deterministic tick process:
   # - At each tick time t in ctx$times, set x <- shift + t.
