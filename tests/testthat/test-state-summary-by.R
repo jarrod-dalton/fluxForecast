@@ -33,11 +33,9 @@ make_toy_bundle <- function() {
 }
 
 test_that("state_summary supports by='patient'", {
-  schema <- list(
-    alive = list(type = "binary", levels = c("FALSE","TRUE"), default = TRUE, coerce = as.logical),
-    phase = list(type = "categorical", levels = c("waitlist","A","B"), default = "A", coerce = as.character),
-    x = list(type = "continuous", default = 0, coerce = as.numeric)
-  )
+  schema <- patientSimCore::default_patient_schema()
+  schema[["phase"]] <- list(type = "categorical", levels = c("waitlist","post_mi"), default = "waitlist", coerce = as.character)
+  schema[["x"]] <- list(type = "continuous", default = 0, coerce = as.numeric, validate = function(v) length(v) == 1L && is.finite(v))
 
   p1 <- patientSimCore::new_patient(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
   p2 <- patientSimCore::new_patient(init = list(alive = TRUE, phase = "waitlist", x = 10), schema = schema, time0 = 0)

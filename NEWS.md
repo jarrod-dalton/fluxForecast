@@ -1,3 +1,7 @@
+## patientSimForecast 1.0.24
+
+- Update unit tests to build schemas from patientSimCore::default_patient_schema() (engine-level variables).
+
 ## 1.0.22
 - Remove: forecast() no longer reorders runs to match the run index. patientSimCore now guarantees the alignment invariant (runs[[i]] <-> index[i,]).
 

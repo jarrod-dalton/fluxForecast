@@ -49,11 +49,9 @@ make_stop_bundle <- function() {
 }
 
 test_that("follow-up can stop without implying death (alive vs defined)", {
-  schema <- list(
-    alive = list(type = "binary", levels = c("FALSE","TRUE"), default = TRUE, coerce = as.logical),
-    phase = list(type = "categorical", levels = c("waitlist","transplanted"), default = "waitlist", coerce = as.character),
-    x     = list(type = "continuous", default = 0, coerce = as.numeric)
-  )
+  schema <- patientSimCore::default_patient_schema()
+  schema[["phase"]] <- list(type = "categorical", levels = c("waitlist","post_mi"), default = "waitlist", coerce = as.character)
+  schema[["x"]] <- list(type = "continuous", default = 0, coerce = as.numeric, validate = function(v) length(v) == 1L && is.finite(v))
 
   p <- patientSimCore::new_patient(
     init = list(alive = TRUE, phase = "waitlist", x = 0),
