@@ -1,3 +1,7 @@
+## patientSimForecast 1.1.0
+
+- Version bump (minor release).
+
 ## patientSimForecast 1.0.25
 
 - Fix unit test schema in quantiles-multi-ctx to include age and miles_to_work.
