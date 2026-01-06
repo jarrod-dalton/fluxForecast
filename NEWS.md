@@ -1,3 +1,7 @@
+## 1.2.0
+
+- Version bump to align with patientSim ecosystem v1.2.0. No functional changes.
+
 # 1.1.2 (2026-01-06)
 
 - Propagate optional Patient$id as patient_tag in forecast run_index and streaming summaries when supplied.
