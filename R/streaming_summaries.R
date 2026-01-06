@@ -13,12 +13,13 @@
 # ------------------------------------------------------------------------------
 
 .build_run_grid <- function(n_patients, n_param_sets, S) {
-  # Returns a data.frame with one row per run.
+  # Returns a data.frame with one row per streaming execution unit.
+  # NOTE: Do not name this column `run_id`; canonical run_id is owned by patientSimCore::run_cohort().
   patient_id <- rep(seq_len(n_patients), each = n_param_sets * S)
   param_set_id <- rep(rep(seq_len(n_param_sets), each = S), times = n_patients)
   sim_id <- rep.int(seq_len(S), times = n_patients * n_param_sets)
   data.frame(
-    run_id = seq_len(n_patients * n_param_sets * S),
+    stream_id = seq_len(n_patients * n_param_sets * S),
     patient_id = patient_id,
     param_set_id = param_set_id,
     sim_id = sim_id,
@@ -26,9 +27,9 @@
   )
 }
 
-.seed_for_run <- function(seed, run_id) {
+.seed_for_stream <- function(seed, stream_id) {
   if (is.null(seed)) return(NULL)
-  as.integer(seed + run_id)
+  as.integer(seed + stream_id)
 }
 
 .first_event_time_any <- function(events_df, event_set) {
@@ -151,11 +152,11 @@ risk_forecast <- function(
 
   # per-run worker
   one_run <- function(row) {
-    run_id <- row$run_id
+    stream_id <- row$stream_id
     pid <- row$patient_id
     did <- row$param_set_id
 
-    if (!is.null(seed)) set.seed(.seed_for_run(as.integer(seed), run_id))
+    if (!is.null(seed)) set.seed(.seed_for_stream(as.integer(seed), stream_id))
 
     p0 <- patients[[pid]]
     p <- p0$clone(deep = TRUE)
@@ -380,11 +381,11 @@ state_summary_forecast <- function(
   }
 
   one_run <- function(row) {
-    run_id <- row$run_id
+    stream_id <- row$stream_id
     pid <- row$patient_id
     did <- row$param_set_id
 
-    if (!is.null(seed)) set.seed(.seed_for_run(as.integer(seed), run_id))
+    if (!is.null(seed)) set.seed(.seed_for_stream(as.integer(seed), stream_id))
 
     p0 <- patients[[pid]]
     p <- p0$clone(deep = TRUE)
