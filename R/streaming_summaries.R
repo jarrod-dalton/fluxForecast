@@ -4,7 +4,7 @@
 # These helpers run S simulations per (patient, param_set) and return compact
 # summary objects without materializing a full ps_forecast object.
 #
-# v1 semantics:
+# Default semantics:
 # - Fixed cohort defined at start_time (default time0 = min(times)).
 # - Base eligibility requires snapshot_at_time(start_time)$alive == TRUE.
 # - Optional event-free conditioning by start_time (terminal_events,
@@ -98,7 +98,7 @@
 #'   future plan (multisession) with that number of workers and then restore
 #'   the previous plan.
 #'
-#' @return A ps_risk object.
+#' @return A ps_risk object. If Patient objects have a non-NULL `id` field, summaries include a `patient_tag` column carrying that de-identified identifier.
 #' @export
 risk_forecast <- function(
   engine,
@@ -145,16 +145,22 @@ risk_forecast <- function(
 
   N <- length(patients)
   P <- length(param_sets)
+
+  patient_tags <- vapply(patients, function(p) {
+    if (!is.null(p$id)) as.character(p$id) else NA_character_
+  }, character(1))
   S <- as.integer(S)
   if (S < 1L) stop("S must be a positive integer.", call. = FALSE)
   horizon <- max(times)
   grid <- .build_run_grid(N, P, S)
+  grid$patient_tag <- patient_tags[grid$patient_id]
 
   # per-run worker
   one_run <- function(row) {
     stream_id <- row$stream_id
     pid <- row$patient_id
     did <- row$param_set_id
+    ptag <- row$patient_tag
 
     if (!is.null(seed)) set.seed(.seed_for_stream(as.integer(seed), stream_id))
 
@@ -185,12 +191,12 @@ risk_forecast <- function(
     )
 
     if (!ps_is_true1(eligible0)) {
-      return(list(eligible = FALSE, contrib = integer(length(times)), patient_id = row$patient_id, draw_id = row$param_set_id, sim_id = row$sim_id))
+      return(list(eligible = FALSE, contrib = integer(length(times)), patient_id = row$patient_id, patient_tag = ptag, draw_id = row$param_set_id, sim_id = row$sim_id))
     }
 
     ft_event <- .first_event_time_any(ev, event)
     contrib <- as.integer(ft_event <= times)
-    list(eligible = TRUE, contrib = contrib, patient_id = row$patient_id, draw_id = row$param_set_id, sim_id = row$sim_id)
+    list(eligible = TRUE, contrib = contrib, patient_id = row$patient_id, patient_tag = ptag, draw_id = row$param_set_id, sim_id = row$sim_id)
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -249,6 +255,7 @@ risk_forecast <- function(
     # aggregate by group
     part_df <- data.frame(
       patient_id = vapply(parts, function(z) z$patient_id, integer(1)),
+      patient_tag = vapply(parts, function(z) z$patient_tag, character(1)),
       draw_id = vapply(parts, function(z) z$draw_id, integer(1)),
       eligible = vapply(parts, function(z) ps_is_true1(z$eligible), logical(1)),
       stringsAsFactors = FALSE
@@ -362,10 +369,15 @@ state_summary_forecast <- function(
 
   N <- length(patients)
   P <- length(param_sets)
+
+  patient_tags <- vapply(patients, function(p) {
+    if (!is.null(p$id)) as.character(p$id) else NA_character_
+  }, character(1))
   S <- as.integer(S)
   if (S < 1L) stop("S must be a positive integer.", call. = FALSE)
   horizon <- max(times)
   grid <- .build_run_grid(N, P, S)
+  grid$patient_tag <- patient_tags[grid$patient_id]
 
   T <- length(times)
 
@@ -384,6 +396,7 @@ state_summary_forecast <- function(
     stream_id <- row$stream_id
     pid <- row$patient_id
     did <- row$param_set_id
+    ptag <- row$patient_tag
 
     if (!is.null(seed)) set.seed(.seed_for_stream(as.integer(seed), stream_id))
 
@@ -465,7 +478,7 @@ state_summary_forecast <- function(
       }
     }
 
-    list(eligible = TRUE, patient_id = pid, draw_id = did, sim_id = row$sim_id, num = num_part, cat = cat_part, bin_track = bin_track)
+    list(eligible = TRUE, patient_id = pid, patient_tag = ptag, draw_id = did, sim_id = row$sim_id, num = num_part, cat = cat_part, bin_track = bin_track)
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -594,22 +607,28 @@ state_summary_forecast <- function(
     if (by != "run") {
       if (by == "patient") {
         pid <- outs_g[[1]]$patient_id
+        ptag <- outs_g[[1]]$patient_tag
+        ptag <- outs_g[[1]]$patient_tag
         for (v in vars) {
           numeric[[v]]$patient_id <- pid
-          numeric[[v]] <- numeric[[v]][, c("patient_id", setdiff(names(numeric[[v]]), "patient_id")), drop = FALSE]
+          numeric[[v]]$patient_tag <- ptag
+          numeric[[v]] <- numeric[[v]][, c("patient_id", "patient_tag", setdiff(names(numeric[[v]]), c("patient_id","patient_tag"))), drop = FALSE]
           categorical[[v]]$patient_id <- pid
-          categorical[[v]] <- categorical[[v]][, c("patient_id", setdiff(names(categorical[[v]]), "patient_id")), drop = FALSE]
+          categorical[[v]]$patient_tag <- ptag
+          categorical[[v]] <- categorical[[v]][, c("patient_id", "patient_tag", setdiff(names(categorical[[v]]), c("patient_id","patient_tag"))), drop = FALSE]
         }
       } else if (by == "patient_draw") {
         pid <- outs_g[[1]]$patient_id
         did <- outs_g[[1]]$draw_id
         for (v in vars) {
           numeric[[v]]$patient_id <- pid
+          numeric[[v]]$patient_tag <- ptag
           numeric[[v]]$draw_id <- did
-          numeric[[v]] <- numeric[[v]][, c("patient_id", "draw_id", setdiff(names(numeric[[v]]), c("patient_id","draw_id"))), drop = FALSE]
+          numeric[[v]] <- numeric[[v]][, c("patient_id", "patient_tag", "draw_id", setdiff(names(numeric[[v]]), c("patient_id","patient_tag","draw_id"))), drop = FALSE]
           categorical[[v]]$patient_id <- pid
+          categorical[[v]]$patient_tag <- ptag
           categorical[[v]]$draw_id <- did
-          categorical[[v]] <- categorical[[v]][, c("patient_id", "draw_id", setdiff(names(categorical[[v]]), c("patient_id","draw_id"))), drop = FALSE]
+          categorical[[v]] <- categorical[[v]][, c("patient_id", "patient_tag", "draw_id", setdiff(names(categorical[[v]]), c("patient_id","patient_tag","draw_id"))), drop = FALSE]
         }
       }
     }

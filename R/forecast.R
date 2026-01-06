@@ -123,9 +123,16 @@ forecast <- function(
   patient_levels <- unique(idx$patient_id)
   patient_id_int <- match(idx$patient_id, patient_levels)
 
+  patient_tags <- vapply(patient_levels, function(pid) {
+    p <- patients[[pid]]
+    if (is.null(p)) return(NA_character_)
+    if (!is.null(p$id)) as.character(p$id) else NA_character_
+  }, character(1))
+
   run_index <- data.frame(
     run_id = idx$run_id,
     patient_id = patient_id_int,
+    patient_tag = patient_tags[patient_id_int],
     # Canonical naming for parameter draws in the ecosystem is draw_id.
     draw_id = idx$draw_id,
     # Back-compat alias (used in some early streaming code).
@@ -209,6 +216,7 @@ forecast <- function(
 
   meta <- list(
     patient_levels = patient_levels,
+    patient_tags = patient_tags,
     schema = schema0,
     ctx = ctx,
     seed = seed,

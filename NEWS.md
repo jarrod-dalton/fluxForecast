@@ -1,3 +1,8 @@
+# 1.1.2 (2026-01-06)
+
+- Propagate optional Patient$id as patient_tag in forecast run_index and streaming summaries when supplied.
+- Documentation cleanup and minor internal refactors.
+
 ## patientSimForecast 1.1.0
 
 - Version bump (minor release).
