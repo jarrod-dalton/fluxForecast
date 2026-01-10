@@ -1,3 +1,8 @@
+## 1.3.0
+
+- Coordinated ecosystem release v1.3.0.
+- Schema validation and schema helper workflows are consolidated to `patientSimCore`.
+
 ## 1.2.1
 
 ## 1.2.2
