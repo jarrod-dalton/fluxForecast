@@ -58,7 +58,7 @@ forecast <- function(
   if (inherits(patients, "Patient")) patients <- list(p1 = patients)
   if (!is.list(patients) || length(patients) == 0L) stop("patients must be a non-empty list of Patient objects.", call. = FALSE)
 
-  times <- as.numeric(times)
+  times <- .psf_as_numeric_time(times, name = "times", ctx = ctx)
   if (!is.numeric(times) || length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
   times <- sort(unique(times))
 

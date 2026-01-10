@@ -101,7 +101,7 @@ state_summary <- function(
   if (is.null(times)) {
     times <- x$times
   } else {
-    times <- as.numeric(times)
+    times <- .psf_as_numeric_time(times, name = "times")
     if (!all(times %in% x$times)) {
       bad <- setdiff(times, x$times)
       stop("times must be a subset of x$times. Unknown: ", paste(bad, collapse = ", "), call. = FALSE)

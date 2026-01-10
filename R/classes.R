@@ -16,8 +16,8 @@ new_ps_forecast <- function(
   meta = list()
 ) {
   x <- list(
-    times = as.numeric(times),
-    time0 = as.numeric(time0),
+    times = .psf_as_numeric_time(times, name = "times"),
+    time0 = .psf_as_numeric_time(time0, name = "time0"),
     run_index = run_index,
     defined = defined,
     alive = alive,

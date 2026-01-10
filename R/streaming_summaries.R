@@ -122,11 +122,11 @@ risk_forecast <- function(
   by <- match.arg(by)
   if (inherits(patients, "Patient")) patients <- list(p1 = patients)
   if (!is.list(patients) || length(patients) == 0L) stop("patients must be a non-empty list of Patient objects.", call. = FALSE)
-  times <- sort(unique(as.numeric(times)))
+  times <- sort(unique(.psf_as_numeric_time(times, name = "times", ctx = ctx)))
   if (length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
 
   if (is.null(start_time)) start_time <- min(times)
-  start_time <- as.numeric(start_time)
+  start_time <- .psf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
   if (length(start_time) != 1L || !is.finite(start_time)) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% times) stop("start_time must be one of times (v1 restriction).", call. = FALSE)
 
@@ -351,11 +351,11 @@ state_summary_forecast <- function(
   if (inherits(patients, "Patient")) patients <- list(p1 = patients)
   if (!is.list(patients) || length(patients) == 0L) stop("patients must be a non-empty list of Patient objects.", call. = FALSE)
 
-  times <- sort(unique(as.numeric(times)))
+  times <- sort(unique(.psf_as_numeric_time(times, name = "times", ctx = ctx)))
   if (length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
 
   if (is.null(start_time)) start_time <- min(times)
-  start_time <- as.numeric(start_time)
+  start_time <- .psf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
   if (length(start_time) != 1L || !is.finite(start_time)) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% times) stop("start_time must be one of times (v1 restriction).", call. = FALSE)
 

@@ -35,14 +35,14 @@ risk <- function(
   if (is.null(times)) {
     times <- x$times
   } else {
-    times <- sort(unique(as.numeric(times)))
+    times <- sort(unique(.psf_as_numeric_time(times, name = "times", ctx = ctx)))
     if (!all(times %in% x$times)) stop("All times must be members of x$times.", call. = FALSE)
   }
 
   if (is.null(start_time)) {
     start_time <- x$time0
   }
-  start_time <- as.numeric(start_time)
+  start_time <- .psf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
   if (!is.finite(start_time) || length(start_time) != 1L) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% x$times) stop("start_time must be one of x$times (v1 restriction).", call. = FALSE)
 
