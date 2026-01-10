@@ -1,5 +1,9 @@
 ## 1.2.1
 
+## 1.2.2
+
+- Add LICENSE file to align repository structure with ecosystem standards.
+
 - Guard: forecast/risk/draws/streaming time inputs must be numeric model time. Calendar time inputs (Date/POSIXct) now error with a message that includes ctx$time$unit when available.
 
 ## 1.2.0
