@@ -1,3 +1,9 @@
+## 1.4.0
+
+- Internal naming cleanup: removed `ps_` prefixes from internal helper/constructor functions for consistency with current package naming conventions.
+- Refactor: centralized `isTRUEorNA()` in `utils_internal.R` and removed duplicate local definitions.
+- Documentation and file hygiene: aligned references with current names, removed roxygen-style blocks from `R/`, and standardized filenames to underscore style.
+
 ## 1.3.0
 
 - Coordinated ecosystem release v1.3.0.

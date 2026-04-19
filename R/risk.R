@@ -2,20 +2,6 @@
 # risk() and survival()
 # ------------------------------------------------------------------------------
 
-#' Compute event risk curves from a ps_forecast
-#'
-#' @param x A ps_forecast.
-#' @param event Character vector of event types of interest.
-#' @param times Optional numeric vector subset of x$times (default all).
-#' @param start_time Optional scalar time in x$times at which to define the eligible cohort.
-#'   Default is x$time0.
-#' @param terminal_events Optional character vector of event types that must be absent by start_time.
-#' @param condition_on_events Optional character vector of event types that must be absent by start_time.
-#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE. Evaluated at start_time only.
-#' @param ctx Optional list passed to eligible().
-#'
-#' @return A ps_risk object.
-#' @export
 risk <- function(
   x,
   event,
@@ -197,17 +183,9 @@ ft_event <- first_time_any(event)
     n_eligible = n_eligible
   )
 
-  new_ps_risk(spec = spec, cohort = cohort, result = res)
+  new_risk(spec = spec, cohort = cohort, result = res)
 }
 
-#' Event-free curve as pure sugar over risk()
-#'
-#' @param x A ps_forecast.
-#' @param terminal_events Character vector of event types defining the terminal/composite endpoint.
-#' @param ... Passed to risk().
-#'
-#' @return A ps_risk object with result$risk replaced by event_free.
-#' @export
 survival <- function(x, terminal_events, ...) {
   if (missing(terminal_events) || is.null(terminal_events) || length(terminal_events) < 1L) {
     stop("survival() requires terminal_events (character vector).", call. = FALSE)
@@ -215,9 +193,4 @@ survival <- function(x, terminal_events, ...) {
   r <- risk(x, event = terminal_events, ...)
   r$result$event_free <- 1 - r$result$risk
   r
-}
-
-isTRUEorNA <- function(x) {
-  # returns TRUE for TRUE, FALSE for FALSE, and NA stays NA
-  ps_na_safe_true(x)
 }

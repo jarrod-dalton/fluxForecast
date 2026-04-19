@@ -2,37 +2,6 @@
 # forecast()
 # ------------------------------------------------------------------------------
 
-#' Run forward-simulation forecasts for one or more patients
-#'
-#' @param engine A patientSimCore Engine.
-#' @param patients A list of patientSimCore Patient objects (or a single Patient).
-#' @param times Numeric vector of forecast times (must be >= patient time0).
-#' @param S Integer simulations per (patient, param_set).
-#' @param param_sets Optional list of parameter lists. If NULL, uses engine defaults.
-#' @param vars Character vector of snapshot variables to store. 'alive' is always included.
-#' @param max_events Passed to Engine$run().
-#' @param seed Optional base seed for deterministic per-run seeds.
-#' @param backend Parallel backend. One of c('none','mclapply','cluster','future').
-#'   - 'none': run serially.
-#'   - 'mclapply': use parallel::mclapply (macOS/Linux; not Windows).
-#'   - 'cluster': use a PSOCK cluster via patientSimCore::run_cohort(backend='cluster').
-#'   - 'future': use future.apply::future_lapply via patientSimCore::run_cohort(backend='future').
-#' @param n_workers Optional number of workers.
-#' @param return One of c('object','summary_stats','none').
-#' @param summary_stats If return='summary_stats', a character vector of summaries to compute.
-#'   Currently supports 'risk' and 'state'.
-#' @param summary_spec If return='summary_stats', a named list describing the summary to compute.
-#'   For summary_stats='risk', this is passed to risk_forecast().
-#'   For summary_stats='state', this is passed to state_summary_forecast().
-#' @param ctx Optional simulation context. Can be either:
-#'   - a single list merged into ctx for every run, or
-#'   - a list of per-parameter-set ctx lists (length equal to length(param_sets)).
-#'     Each per-draw ctx may include its own $params; if so, that overrides param_sets.
-#'
-#' @return A ps_forecast object if return='object'. If return='summary_stats', returns a list
-#'   of summary objects. If return='none', returns invisible(NULL).
-#'
-#' @export
 forecast <- function(
   engine,
   patients,
@@ -195,7 +164,7 @@ forecast <- function(
         # Preserve NA if a model ever represents unknown vital status at a defined time.
         # (Core v1.0 enforces alive is non-NA, but downstream code should be robust.)
         av <- snap[["alive"]]
-        alive[i, tt] <- ps_na_safe_true1(av)
+        alive[i, tt] <- na_safe_true1(av)
 
         for (v in vars) {
           val <- snap[[v]]
@@ -230,7 +199,7 @@ forecast <- function(
   
 
 
-  x <- new_ps_forecast(
+  x <- new_forecast(
     times = times,
     time0 = min(times),
     run_index = run_index,

@@ -76,30 +76,6 @@
   TRUE
 }
 
-#' Streaming risk summary without materializing a full ps_forecast
-#'
-#' @param engine A patientSimCore Engine.
-#' @param patients A list of Patient objects (or a single Patient).
-#' @param times Numeric vector of forecast times.
-#' @param event Character vector of event types of interest.
-#' @param S Simulations per (patient, param_set).
-#' @param param_sets Optional list of parameter lists.
-#' @param start_time Scalar time in `times` to define the eligible cohort (default min(times)).
-#' @param terminal_events Optional event types that must be absent by start_time.
-#' @param condition_on_events Optional event types that must be absent by start_time.
-#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE, evaluated at start_time.
-#' @param ctx Optional list passed to eligible().
-#' @param max_events Passed to Engine$run().
-#' @param seed Optional base seed.
-#' @param backend Parallel backend. One of c('none','mclapply','future').
-#'   Use 'future' with future.apply (recommended for clusters/cloud).
-#' @param n_workers Optional number of workers. Used for 'mclapply'. If backend='future'
-#'   and n_workers is provided, risk_forecast() will temporarily set a local
-#'   future plan (multisession) with that number of workers and then restore
-#'   the previous plan.
-#'
-#' @return A ps_risk object. If Patient objects have a non-NULL `id` field, summaries include a `patient_tag` column carrying that de-identified identifier.
-#' @export
 risk_forecast <- function(
   engine,
   patients,
@@ -190,7 +166,7 @@ risk_forecast <- function(
       ctx = ctx_run
     )
 
-    if (!ps_is_true1(eligible0)) {
+    if (!is_true1(eligible0)) {
       return(list(eligible = FALSE, contrib = integer(length(times)), patient_id = row$patient_id, patient_tag = ptag, draw_id = row$param_set_id, sim_id = row$sim_id))
     }
 
@@ -226,7 +202,7 @@ risk_forecast <- function(
     }
   )
 
-  n_eligible <- sum(vapply(parts, function(z) ps_is_true1(z$eligible), logical(1)))
+  n_eligible <- sum(vapply(parts, function(z) is_true1(z$eligible), logical(1)))
 
   group_cols <- switch(
     by,
@@ -257,7 +233,7 @@ risk_forecast <- function(
       patient_id = vapply(parts, function(z) z$patient_id, integer(1)),
       patient_tag = vapply(parts, function(z) z$patient_tag, character(1)),
       draw_id = vapply(parts, function(z) z$draw_id, integer(1)),
-      eligible = vapply(parts, function(z) ps_is_true1(z$eligible), logical(1)),
+      eligible = vapply(parts, function(z) is_true1(z$eligible), logical(1)),
       stringsAsFactors = FALSE
     )
     part_df$key <- interaction(part_df[, group_cols, drop = FALSE], drop = TRUE, lex.order = TRUE)
@@ -308,23 +284,9 @@ spec <- list(
     denom = "fixed"
   )
   cohort <- list(eligible_run_ids = integer(0), n_eligible = n_eligible)
-  new_ps_risk(spec = spec, cohort = cohort, result = res)
+  new_risk(spec = spec, cohort = cohort, result = res)
 }
 
-#' Streaming state summaries without materializing a full ps_forecast
-#'
-#' Computes conditional summaries of state variables over a time grid among a
-#' fixed eligible cohort defined at start_time.
-#'
-#' @param vars Character vector of state/derived variable names to summarize.
-#' @param start_time Cohort definition time (default min(times)).
-#' @param terminal_events,condition_on_events,eligible,ctx See risk_forecast().
-#'
-#' @return A list with elements:
-#'   - meta: list
-#'   - numeric: named list of data.frames (one per numeric var)
-#'   - categorical: named list of data.frames (one per categorical var)
-#' @export
 state_summary_forecast <- function(
   engine,
   patients,
@@ -426,7 +388,7 @@ state_summary_forecast <- function(
       ctx = ctx_run
     )
 
-    if (!ps_is_true1(eligible0)) return(NULL)
+    if (!is_true1(eligible0)) return(NULL)
 
     # Eligible cohort contribution: accumulate within-run summaries.
     num_part <- blank_num_part()
@@ -456,12 +418,12 @@ state_summary_forecast <- function(
           bt <- bin_track[[v]]
           bt$min <- min(bt$min, val)
           bt$max <- max(bt$max, val)
-          if (!ps_is_true1(all.equal(val, round(val)))) bt$non_int <- TRUE
+          if (!is_true1(all.equal(val, round(val)))) bt$non_int <- TRUE
           bin_track[[v]] <- bt
 
           # Also accumulate categorical counts for (0,1) values so we can
           # later decide whether this variable is truly binary.
-          if (ps_is_true1(all.equal(val, 0)) || ps_is_true1(all.equal(val, 1))) {
+          if (is_true1(all.equal(val, 0)) || is_true1(all.equal(val, 1))) {
             nm <- as.character(as.integer(val))
             slot <- cat_part[[v]][[tt]]
             if (is.null(slot)) slot <- integer(0)
@@ -551,7 +513,7 @@ state_summary_forecast <- function(
         obt <- o$bin_track[[v]]
         bt$min <- min(bt$min, obt$min)
         bt$max <- max(bt$max, obt$max)
-        bt$non_int <- ps_is_true1(bt$non_int) || ps_is_true1(obt$non_int)
+        bt$non_int <- is_true1(bt$non_int) || is_true1(obt$non_int)
         bin_tot[[v]] <- bt
 
         for (tt in seq_along(times)) {
@@ -588,7 +550,7 @@ state_summary_forecast <- function(
       for (tt in seq_along(times)) {
         slot <- cat_tot[[v]][[tt]]
         bt <- bin_tot[[v]]
-        is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !ps_is_true1(bt$non_int) && bt$min >= 0 && bt$max <= 1
+        is_binary_numeric <- is.finite(bt$min) && is.finite(bt$max) && !is_true1(bt$non_int) && bt$min >= 0 && bt$max <= 1
         if (!is_binary_numeric && !is.null(slot) && all(names(slot) %in% c("0", "1"))) slot <- NULL
         if (is.null(slot) || length(slot) == 0L) next
         nn <- sum(slot)

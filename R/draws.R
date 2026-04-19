@@ -2,22 +2,6 @@
 # draws()
 # ------------------------------------------------------------------------------
 
-#' Extract simulated draws for one or more variables
-#'
-#' @param x A ps_forecast.
-#' @param var Character vector of variables to extract.
-#' @param times Optional numeric vector subset of x$times (default all).
-#' @param start_time Optional scalar time in x$times used to define a fixed cohort
-#'   when eligible is provided (or when cohort = 'fixed'). Default is x$time0.
-#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE. Evaluated at start_time only.
-#' @param ctx Optional list passed to eligible().
-#' @param cohort One of c('timepoint','fixed').
-#'   - 'timepoint': include any run defined & alive at each time.
-#'   - 'fixed': define a cohort at start_time then return draws for that cohort at all requested times.
-#'
-#' @return If length(var)==1, a data.frame with columns run_id, time, value.
-#'   If length(var)>1, a named list of such data.frames.
-#' @export
 draws <- function(
   x,
   var,
@@ -127,9 +111,4 @@ draws <- function(
   out <- stats::setNames(vector("list", length(var)), var)
   for (k in seq_along(var)) out[[k]] <- build_one(var[[k]])
   out
-}
-
-# local helper shared with risk.R
-isTRUEorNA <- function(x) {
-  ps_na_safe_true(x)
 }

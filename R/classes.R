@@ -2,8 +2,7 @@
 # Classes
 # ------------------------------------------------------------------------------
 
-#' @keywords internal
-new_ps_forecast <- function(
+new_forecast <- function(
   times,
   time0,
   run_index,
@@ -28,12 +27,11 @@ new_ps_forecast <- function(
     meta = meta
   )
   class(x) <- "ps_forecast"
-  validate_ps_forecast(x)
+  validate_forecast(x)
   x
 }
 
-#' @keywords internal
-validate_ps_forecast <- function(x) {
+validate_forecast <- function(x) {
   if (!is.list(x)) stop("ps_forecast must be a list.", call. = FALSE)
   if (!is.numeric(x$times) || length(x$times) < 1L) stop("ps_forecast$times must be a non-empty numeric vector.", call. = FALSE)
   if (!is.numeric(x$time0) || length(x$time0) != 1L || !is.finite(x$time0)) stop("ps_forecast$time0 must be a finite numeric scalar.", call. = FALSE)
@@ -100,16 +98,14 @@ validate_ps_forecast <- function(x) {
   invisible(TRUE)
 }
 
-#' @keywords internal
-new_ps_risk <- function(spec, cohort, result, meta = list()) {
+new_risk <- function(spec, cohort, result, meta = list()) {
   x <- list(spec = spec, cohort = cohort, result = result, meta = meta)
   class(x) <- "ps_risk"
-  validate_ps_risk(x)
+  validate_risk(x)
   x
 }
 
-#' @keywords internal
-validate_ps_risk <- function(x) {
+validate_risk <- function(x) {
   if (!is.list(x) || is.null(x$spec) || is.null(x$cohort) || is.null(x$result)) {
     stop("ps_risk must be a list with spec, cohort, and result.", call. = FALSE)
   }
@@ -125,7 +121,6 @@ validate_ps_risk <- function(x) {
 # Print methods
 # ------------------------------------------------------------------------------
 
-#' @export
 print.ps_forecast <- function(x, ...) {
   idx <- x$run_index
   cat("<ps_forecast>\n")
@@ -141,7 +136,6 @@ print.ps_forecast <- function(x, ...) {
   invisible(x)
 }
 
-#' @export
 print.ps_risk <- function(x, ...) {
   cat("<ps_risk>\n")
   ev <- x$spec$event

@@ -2,22 +2,6 @@
 # state_summary()
 # ------------------------------------------------------------------------------
 
-#' Summarize forecasted state variables over time
-#'
-#' Given a ps_forecast object (from forecast(return="object")), summarize the
-#' distribution of state variables at each requested time among runs that are
-#' still under active follow-up at that time.
-#'
-#' Type rules:
-#' - Variable type is taken from ps_forecast$meta$schema[[var]]$type.
-#' - No type inference from observed values is performed.
-#'
-#' @param x A ps_forecast object.
-#' @param vars Character vector of variables to summarize (default: all vars in x).
-#' @param times Optional numeric vector subset of x$times (default: all).
-#' @param categorical_max_levels Maximum number of distinct levels allowed for categorical vars.
-#' @return A named list with one entry per var. Each entry is a data.frame.
-#' @export
 state_summary <- function(
   x,
   vars = NULL,
@@ -25,7 +9,7 @@ state_summary <- function(
   categorical_max_levels = 50,
   by = c("run", "patient", "patient_draw")
 ) {
-  validate_ps_forecast(x)
+  validate_forecast(x)
 
   # Bind data.frames that may have different columns by filling missing columns with NA.
   rbind_fill <- function(a, b) {
