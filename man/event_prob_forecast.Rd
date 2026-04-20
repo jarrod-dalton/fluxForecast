@@ -1,23 +1,24 @@
-\name{risk_forecast}
-\alias{risk_forecast}
+\name{event_prob_forecast}
+\alias{event_prob_forecast}
 \title{Memory-light event risk summaries without storing all simulated trajectories}
 \description{
 Runs forward simulations and computes event risk curves as the simulations run.
-This returns a compact \code{ps_risk} object and avoids keeping a large
-\code{ps_forecast} (which can be memory-heavy when \code{S} or \code{times} is large).
+This returns a compact \code{flux_event_prob} object and avoids keeping a large
+\code{flux_forecast} (which can be memory-heavy when \code{S} or \code{times} is large).
 }
 \usage{
-risk_forecast(engine, patients, times, S = 200, param_sets = NULL, event,
-              by = c("run", "patient", "patient_draw"),
-  start_time = NULL, terminal_events = NULL, condition_on_events = NULL,
-  eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL,
+event_prob_forecast(engine, entities, times, event,
+              by = c("run", "entity", "entity_param_draw"),
+  S = 200, param_sets = NULL, start_time = NULL, terminal_events = NULL,
+  condition_on_events = NULL, eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL,
+  backend = c("none", "mclapply", "future"),
   n_workers = NULL)
 }
 \arguments{
-\item{engine}{A patientSimCore Engine.}
-\item{patients}{A list of Patient objects (or a single Patient).}
+\item{engine}{A fluxCore Engine.}
+\item{entities}{A list of Entity objects (or a single Entity).}
 \item{times}{Numeric vector of forecast times.}
-\item{S}{Simulations per (patient, param_set).}
+\item{S}{Simulations per (entity, param_set).}
 \item{param_sets}{Optional list of parameter lists.}
 \item{event}{Character vector of event types of interest.}
   \item{by}{Grouping level for summaries. Default is \code{"run"}.}
@@ -32,5 +33,5 @@ risk_forecast(engine, patients, times, S = 200, param_sets = NULL, event,
 \item{n_workers}{Optional number of workers for \code{mclapply} or an ephemeral \code{future::multisession} plan.}
 }
 \value{
-A \code{ps_risk} object.
+A \code{flux_event_prob} object.
 }

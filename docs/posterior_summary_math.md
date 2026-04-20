@@ -1,7 +1,7 @@
 
-# Posterior summary mathematics in `patientSimForecast`
+# Posterior summary mathematics in `fluxForecast`
 
-This document describes how `patientSimForecast` constructs posterior summaries from simulated trajectories produced by `patientSimCore`. These summaries are **empirical functionals of simulated runs**, not estimators derived from hazard models.
+This document describes how `fluxForecast` constructs posterior summaries from simulated trajectories produced by `fluxCore`. These summaries are **empirical functionals of simulated runs**, not estimators derived from hazard models.
 
 The emphasis throughout is on:
 - clarity of denominators,
@@ -14,7 +14,7 @@ The emphasis throughout is on:
 
 Assume a forecast produces:
 
-- `S` simulation runs per patient per parameter set
+- `S` simulation runs per entity per parameter set
 - indexed by `s = 1, …, S`
 - with event histories observed over time
 
@@ -33,7 +33,7 @@ times = (t₁, t₂, …, t_K)
 
 ## Simulation origin vs summary reference time
 
-A critical distinction in `patientSimForecast` is between:
+A critical distinction in `fluxForecast` is between:
 
 ### Simulation origin
 - The time at which the simulation begins (e.g., time 0, age 40, transplant date).
@@ -173,7 +173,7 @@ Kaplan–Meier estimation:
 - conditions on having survived up to that time,
 - estimates a survival function via hazards.
 
-`patientSimForecast` does **none** of these.
+`fluxForecast` does **none** of these.
 
 Instead, it reports **direct empirical proportions** from simulated trajectories, conditioned once at `t_ref`.
 
@@ -238,7 +238,7 @@ This mirrors a policy-style estimand:
 
 ## State variable summaries
 
-In addition to event summaries, `patientSimForecast` can summarize **state variables** at each reporting time.
+In addition to event summaries, `fluxForecast` can summarize **state variables** at each reporting time.
 
 ### Variable classification
 
@@ -289,7 +289,7 @@ All are computed empirically across runs with observed state at `t_k`.
 
 ## Summary
 
-`patientSimForecast` produces:
+`fluxForecast` produces:
 - **fixed-denominator**, policy-style summaries,
 - directly from simulated trajectories,
 - with explicit conditioning and no hazard modeling.

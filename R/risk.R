@@ -1,11 +1,11 @@
 # ------------------------------------------------------------------------------
-# risk() and survival()
+# event_prob() and survival()
 # ------------------------------------------------------------------------------
 
-risk <- function(
+event_prob <- function(
   x,
   event,
-  by = c("run", "patient", "patient_draw"),
+  by = c("run", "entity", "entity_param_draw"),
   times = NULL,
   start_time = NULL,
   terminal_events = NULL,
@@ -13,7 +13,7 @@ risk <- function(
   eligible = NULL,
   ctx = NULL
 ) {
-  if (!inherits(x, "ps_forecast")) stop("x must be a ps_forecast.", call. = FALSE)
+  if (!inherits(x, "flux_forecast")) stop("x must be a flux_forecast.", call. = FALSE)
 
   event <- unique(as.character(event))
   if (length(event) < 1L) stop("event must be a non-empty character vector.", call. = FALSE)
@@ -21,14 +21,14 @@ risk <- function(
   if (is.null(times)) {
     times <- x$times
   } else {
-    times <- sort(unique(.psf_as_numeric_time(times, name = "times", ctx = ctx)))
+    times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx)))
     if (!all(times %in% x$times)) stop("All times must be members of x$times.", call. = FALSE)
   }
 
   if (is.null(start_time)) {
     start_time <- x$time0
   }
-  start_time <- .psf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
   if (!is.finite(start_time) || length(start_time) != 1L) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% x$times) stop("start_time must be one of x$times (v1 restriction).", call. = FALSE)
 
@@ -113,29 +113,29 @@ eligible_run_ids <- which(elig)
 
       # grouping:
       #   by = "run"         -> one curve pooling all eligible runs
-      #   by = "patient"     -> one curve per patient_id (averaging across that patient's eligible runs)
-      #   by = "patient_draw"-> one curve per (patient_id, draw_id)
+      #   by = "entity"     -> one curve per entity_id (averaging across that entity's eligible runs)
+      #   by = "entity_param_draw"-> one curve per (entity_id, param_draw_id)
       group_cols <- switch(
         by,
         run = character(0),
-        patient = "patient_id",
-        patient_draw = c("patient_id", "draw_id")
+        entity = "entity_id",
+        entity_param_draw = c("entity_id", "param_draw_id")
       )
       if (length(group_cols) > 0 && !all(group_cols %in% names(x$run_index))) {
-        stop("ps_forecast$run_index must include required columns for by=.", call. = FALSE)
+        stop("flux_forecast$run_index must include required columns for by=.", call. = FALSE)
       }
 
       if (n_eligible == 0L) {
   if (length(group_cols) == 0) {
-    res <- data.frame(time = times, n_eligible = 0L, n_events = 0L, risk = NA_real_)
+    res <- data.frame(time = times, n_eligible = 0L, n_events = 0L, event_prob = NA_real_)
   } else {
     # return 0-row data.frame with required columns
-    res <- data.frame(time = numeric(0), n_eligible = integer(0), n_events = integer(0), risk = numeric(0))
+    res <- data.frame(time = numeric(0), n_eligible = integer(0), n_events = integer(0), event_prob = numeric(0))
     for (gc in rev(group_cols)) {
       res[[gc]] <- character(0)
     }
     # reorder so group cols come first
-    res <- res[, c(group_cols, "time", "n_eligible", "n_events", "risk"), drop = FALSE]
+    res <- res[, c(group_cols, "time", "n_eligible", "n_events", "event_prob"), drop = FALSE]
   }
 } else if (length(group_cols) == 0) {
 ft_event <- first_time_any(event)
@@ -149,7 +149,7 @@ ft_event <- first_time_any(event)
       },
       integer(1)
     )
-        res <- data.frame(time = times, n_eligible = n_eligible, n_events = n_events, risk = n_events / n_eligible)
+        res <- data.frame(time = times, n_eligible = n_eligible, n_events = n_events, event_prob = n_events / n_eligible)
       } else {
         idx_elig <- x$run_index[eligible_run_ids, group_cols, drop = FALSE]
         # create a stable group key
@@ -170,27 +170,28 @@ ft_event <- first_time_any(event)
           # count events by time (cumulative)
           n_ev_g <- vapply(times, function(t) sum(!is.na(ft_g) & ft_g <= t), integer(1))
           df_g <- cbind(idx_elig[pos[1], , drop = FALSE],
-                        data.frame(time = times, n_eligible = n_elig_g, n_events = n_ev_g, risk = n_ev_g / n_elig_g))
+                        data.frame(time = times, n_eligible = n_elig_g, n_events = n_ev_g, event_prob = n_ev_g / n_elig_g))
           rownames(df_g) <- NULL
           rows[[gi]] <- df_g
         }
         res <- do.call(rbind, rows)
         rownames(res) <- NULL
       }
+  res$risk <- res$event_prob
 
   cohort <- list(
     eligible_run_ids = eligible_run_ids,
     n_eligible = n_eligible
   )
 
-  new_risk(spec = spec, cohort = cohort, result = res)
+  new_event_prob(spec = spec, cohort = cohort, result = res)
 }
 
 survival <- function(x, terminal_events, ...) {
   if (missing(terminal_events) || is.null(terminal_events) || length(terminal_events) < 1L) {
     stop("survival() requires terminal_events (character vector).", call. = FALSE)
   }
-  r <- risk(x, event = terminal_events, ...)
-  r$result$event_free <- 1 - r$result$risk
+  r <- event_prob(x, event = terminal_events, ...)
+  r$result$event_free <- 1 - r$result$event_prob
   r
 }

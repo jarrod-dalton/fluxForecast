@@ -8,18 +8,19 @@ variables over a time grid among a fixed eligible cohort defined at
 Binary/categorical variables return level proportions.
 }
 \usage{
-state_summary_forecast(engine, patients, times, vars, S = 200, param_sets = NULL,
-  start_time = NULL, terminal_events = NULL, condition_on_events = NULL,
-  eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL,
+state_summary_forecast(engine, entities, times, vars,
+  by = c("run", "entity", "entity_param_draw"),
+  S = 200, param_sets = NULL, start_time = NULL, terminal_events = NULL,
+  condition_on_events = NULL, eligible = NULL, ctx = NULL, max_events = 1000, seed = NULL,
   backend = c("none", "mclapply", "future"), n_workers = NULL)
 }
 \arguments{
-\item{engine}{A patientSimCore Engine.}
-\item{patients}{A list of Patient objects (or a single Patient).}
+\item{engine}{A fluxCore Engine.}
+\item{entities}{A list of Entity objects (or a single Entity).}
 \item{times}{Numeric vector of forecast times.}
 \item{vars}{Character vector of state/derived variable names to summarize.}
-\item{by}{Grouping level for summaries: \code{\"run\"} pools over all eligible runs; \code{\"patient\"} returns one curve per patient; \code{\"patient_draw\"} returns one curve per (patient, parameter set).}
-\item{S}{Simulations per (patient, param_set).}
+\item{by}{Grouping level for summaries: \code{\"run\"} pools over all eligible runs; \code{\"entity\"} returns one curve per entity; \code{\"entity_param_draw\"} returns one curve per (entity, parameter set).}
+\item{S}{Simulations per (entity, param_set).}
 \item{param_sets}{Optional list of parameter lists.}
 \item{start_time}{Time in \code{times} to define the eligible cohort (default \code{min(times)}).}
 \item{terminal_events}{Optional event types that must be absent by start_time.}

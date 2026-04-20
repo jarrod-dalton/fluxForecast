@@ -1,10 +1,10 @@
 test_that("state_summary quantiles pool correctly across multiple ctx (parameter sets)", {
-  skip_if_not_installed("patientSimCore")
+  skip_if_not_installed("fluxCore")
 
   times <- c(0, 1, 2)
 
   # Extend the default schema with a numeric state variable we will track.
-  schema <- patientSimCore::default_patient_schema()
+  schema <- fluxCore::default_entity_schema()
   schema[["x"]] <- list(
     type = "continuous",
     default = 0,
@@ -19,24 +19,24 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
   # - At each tick time t in ctx$times, set x <- shift + t.
   # - alive remains TRUE throughout.
   toy_bundle <- list(
-    propose_events = function(patient, ctx = NULL, process_ids = NULL, current_proposals = NULL) {
+    propose_events = function(entity, ctx = NULL, process_ids = NULL, current_proposals = NULL) {
       pid <- "tick"
       if (!is.null(process_ids) && !(pid %in% process_ids)) return(list())
       if (is.null(ctx) || is.null(ctx$times)) stop("ctx$times is required for this test")
       tt <- sort(as.numeric(ctx$times))
 
       # We want a tick at time 0 once, then strictly increasing thereafter.
-      if (patient$last_j == 0L) {
+      if (entity$last_j == 0L) {
         t_next <- tt[[1]]
       } else {
-        cand <- tt[tt > patient$last_time]
+        cand <- tt[tt > entity$last_time]
         if (length(cand) == 0L) return(list())
         t_next <- cand[[1]]
       }
 
       list(tick = list(time_next = t_next, event_type = "TICK", process_id = pid))
     },
-    transition = function(patient, event, ctx = NULL) {
+    transition = function(entity, event, ctx = NULL) {
       if (is.null(ctx) || is.null(ctx$params) || is.null(ctx$params$shift)) stop("ctx$params$shift required")
       if (!identical(event$event_type, "TICK")) return(NULL)
       list(
@@ -45,13 +45,13 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
         active_followup = TRUE
       )
     },
-    stop = function(patient, event, ctx = NULL) {
+    stop = function(entity, event, ctx = NULL) {
       FALSE
     }
   )
 
-  # One patient.
-  pat <- patientSimCore::new_patient(
+  # One entity.
+  pat <- fluxCore::new_entity(
     init = list(age = 40, miles_to_work = 10, alive = TRUE, active_followup = TRUE, x = 0),
     schema = schema
   )
@@ -61,11 +61,11 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
   ctx_list <- lapply(0:4, function(s) list(times = times, params = list(shift = s)))
 
   provider <- list(load = function(model_spec, ...) toy_bundle)
-  engine <- patientSimCore::Engine$new(provider = provider)
+  engine <- fluxCore::Engine$new(provider = provider)
 
   x <- forecast(
     engine = engine,
-    patients = pat,
+    entities = pat,
     times = times,
     vars = c("x", "alive", "active_followup"),
     S = 1,

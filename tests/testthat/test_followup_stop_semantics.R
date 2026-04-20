@@ -1,41 +1,41 @@
 library(testthat)
-library(patientSimCore)
-library(patientSimForecast)
+library(fluxCore)
+library(fluxForecast)
 
 make_stop_bundle <- function() {
-  propose_events <- function(patient, ctx, ...) {
-    phase <- patient$state()[["phase"]]
-    alive <- patient$state()[["alive"]]
+  propose_events <- function(entity, ctx, ...) {
+    phase <- entity$state()[["phase"]]
+    alive <- entity$state()[["alive"]]
     props <- list()
 
     # One visit at time 1 to mutate x.
-    if (isTRUE(alive) && patient$last_time < 1) {
+    if (isTRUE(alive) && entity$last_time < 1) {
       props$visit <- list(time_next = 1, event_type = "visit")
     }
 
     # Transplant at time 2 if still on waitlist.
-    if (isTRUE(alive) && identical(phase, "waitlist") && patient$last_time < 2) {
+    if (isTRUE(alive) && identical(phase, "waitlist") && entity$last_time < 2) {
       props$tx <- list(time_next = 2, event_type = "transplant")
     }
 
     props
   }
 
-  transition <- function(patient, event, ctx) {
+  transition <- function(entity, event, ctx) {
     et <- event$event_type
     if (et == "visit") {
-      x <- patient$state()[["x"]]
+      x <- entity$state()[["x"]]
       return(list(x = x + 1))
     }
     if (et == "transplant") {
-      # Follow-up ends at transplant, but patient is still alive.
-      x <- patient$state()[["x"]]
+      # Follow-up ends at transplant, but entity is still alive.
+      x <- entity$state()[["x"]]
       return(list(phase = "post_tx", x = x + 10))
     }
     NULL
   }
 
-  stop <- function(patient, event, ctx) {
+  stop <- function(entity, event, ctx) {
     # Stop follow-up at transplant (non-death).
     if (!is.null(event) && identical(event$event_type, "transplant")) return(TRUE)
     FALSE
@@ -49,11 +49,11 @@ make_stop_bundle <- function() {
 }
 
 test_that("follow-up can stop without implying death (alive vs defined)", {
-  schema <- patientSimCore::default_patient_schema()
+  schema <- fluxCore::default_entity_schema()
   schema[["phase"]] <- list(type = "categorical", levels = c("waitlist","post_mi"), default = "waitlist", coerce = as.character)
   schema[["x"]] <- list(type = "continuous", default = 0, coerce = as.numeric, validate = function(v) length(v) == 1L && is.finite(v))
 
-  p <- patientSimCore::new_patient(
+  p <- fluxCore::new_entity(
     init = list(alive = TRUE, phase = "waitlist", x = 0),
     schema = schema,
     time0 = 0
@@ -67,7 +67,7 @@ test_that("follow-up can stop without implying death (alive vs defined)", {
 
   fx <- forecast(
     engine = engine,
-    patients = list(p1 = p),
+    entities = list(p1 = p),
     times = times,
     S = 1,
     param_sets = list(list()),

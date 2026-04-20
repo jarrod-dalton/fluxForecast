@@ -7,7 +7,7 @@ state_summary <- function(
   vars = NULL,
   times = NULL,
   categorical_max_levels = 50,
-  by = c("run", "patient", "patient_draw")
+  by = c("run", "entity", "entity_param_draw")
 ) {
   validate_forecast(x)
 
@@ -31,35 +31,35 @@ state_summary <- function(
 
   ri <- x$run_index
   if (is.null(ri) || !is.data.frame(ri)) {
-    stop("ps_forecast is missing run_index metadata.", call. = FALSE)
+    stop("flux_forecast is missing run_index metadata.", call. = FALSE)
   }
 
   # Determine grouping of runs.
   # IMPORTANT: use split() on row indices (not string keys) to avoid subtle
-  # coercion issues (e.g., integer/factor patient_id) that can collapse groups.
+  # coercion issues (e.g., integer/factor entity_id) that can collapse groups.
   if (by == "run") {
     group_rows <- as.list(seq_len(nrow(ri)))
     names(group_rows) <- as.character(seq_len(nrow(ri)))
     group_type <- "run"
-  } else if (by == "patient") {
-    if (!("patient_id" %in% names(ri))) {
-      stop("run_index is missing patient_id needed for by='patient'.", call. = FALSE)
+  } else if (by == "entity") {
+    if (!("entity_id" %in% names(ri))) {
+      stop("run_index is missing entity_id needed for by='entity'.", call. = FALSE)
     }
-    group_rows <- split(seq_len(nrow(ri)), as.character(ri$patient_id))
-    group_type <- "patient"
+    group_rows <- split(seq_len(nrow(ri)), as.character(ri$entity_id))
+    group_type <- "entity"
   } else {
-    if (!("patient_id" %in% names(ri))) {
-      stop("run_index is missing patient_id needed for by='patient_draw'.", call. = FALSE)
+    if (!("entity_id" %in% names(ri))) {
+      stop("run_index is missing entity_id needed for by='entity_param_draw'.", call. = FALSE)
     }
-    if (!("draw_id" %in% names(ri))) {
-      stop("run_index is missing draw_id needed for by='patient_draw'.", call. = FALSE)
+    if (!("param_draw_id" %in% names(ri))) {
+      stop("run_index is missing param_draw_id needed for by='entity_param_draw'.", call. = FALSE)
     }
-    key <- paste(as.character(ri$patient_id), as.character(ri$draw_id), sep = "|")
+    key <- paste(as.character(ri$entity_id), as.character(ri$param_draw_id), sep = "|")
     group_rows <- split(seq_len(nrow(ri)), key)
-    group_type <- "patient_draw"
+    group_type <- "entity_param_draw"
   }
 
-  # Helper: subset a ps_forecast to a set of run indices (rows).
+  # Helper: subset a flux_forecast to a set of run indices (rows).
   subset_forecast_runs <- function(x, run_rows) {
     y <- x
     y$run_index <- x$run_index[run_rows, , drop = FALSE]
@@ -85,7 +85,7 @@ state_summary <- function(
   if (is.null(times)) {
     times <- x$times
   } else {
-    times <- .psf_as_numeric_time(times, name = "times")
+    times <- .fluxf_as_numeric_time(times, name = "times")
     if (!all(times %in% x$times)) {
       bad <- setdiff(times, x$times)
       stop("times must be a subset of x$times. Unknown: ", paste(bad, collapse = ", "), call. = FALSE)
@@ -93,7 +93,7 @@ state_summary <- function(
   }
 
   Tidx <- match(times, x$times)
-    # If grouping by patient (or patient_draw), compute summaries by subsetting runs into groups
+    # If grouping by entity (or entity_param_draw), compute summaries by subsetting runs into groups
   # and reusing the existing by='run' behavior. This avoids subtle row-order assumptions.
   
   # NOTE: by!='run' returns above (via per-group subsetting + by='run' recursion),
@@ -115,25 +115,25 @@ if (by != "run") {
       )
 
       # Parse group identifiers to attach columns.
-      if (by == "patient") {
-        patient_id <- g
-        draw_id <- NULL
+      if (by == "entity") {
+        entity_id <- g
+        param_draw_id <- NULL
       } else {
         parts <- strsplit(g, "|", fixed = TRUE)[[1]]
-        patient_id <- parts[[1]]
-        draw_id <- parts[[2]]
+        entity_id <- parts[[1]]
+        param_draw_id <- parts[[2]]
       }
 
       for (v in vars) {
         dfv <- ssg[[v]]
         if (is.null(dfv) || nrow(dfv) == 0) next
-        dfv$patient_id <- patient_id
-        if (!is.null(draw_id)) dfv$draw_id <- draw_id
+        dfv$entity_id <- entity_id
+        if (!is.null(param_draw_id)) dfv$param_draw_id <- param_draw_id
         # Ensure group columns come first.
-        if (by == "patient") {
-          dfv <- dfv[, c("patient_id", setdiff(names(dfv), "patient_id")), drop = FALSE]
+        if (by == "entity") {
+          dfv <- dfv[, c("entity_id", setdiff(names(dfv), "entity_id")), drop = FALSE]
         } else {
-          dfv <- dfv[, c("patient_id", "draw_id", setdiff(names(dfv), c("patient_id","draw_id"))), drop = FALSE]
+          dfv <- dfv[, c("entity_id", "param_draw_id", setdiff(names(dfv), c("entity_id","param_draw_id"))), drop = FALSE]
         }
         out_grp[[v]] <- if (is.null(out_grp[[v]])) dfv else rbind_fill(out_grp[[v]], dfv)
       }

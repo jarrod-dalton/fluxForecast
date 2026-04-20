@@ -1,13 +1,13 @@
 \name{draws}
 \alias{draws}
 \title{Extract simulated draws}
-\description{Extract per-run draws for one or more variables from a \code{ps_forecast}.}
+\description{Extract per-run draws for one or more variables from a \code{flux_forecast}.}
 \usage{
 draws(x, var, times = NULL, start_time = NULL, eligible = NULL, ctx = NULL,
       cohort = c("timepoint", "fixed"))
 }
 \arguments{
-  \item{x}{A \code{ps_forecast}.}
+  \item{x}{A \code{flux_forecast}.}
   \item{var}{Character vector of variables to extract.}
   \item{times}{Optional subset of forecast times.}
   \item{start_time}{Start time used to define a fixed cohort when \code{cohort="fixed"}.}

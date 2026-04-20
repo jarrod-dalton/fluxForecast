@@ -4,7 +4,7 @@
 
 forecast <- function(
   engine,
-  patients,
+  entities,
   times,
   S = 200,
   param_sets = NULL,
@@ -14,7 +14,7 @@ forecast <- function(
   backend = c("none", "mclapply", "cluster", "future"),
   n_workers = NULL,
   return = c("object", "summary_stats", "none"),
-  summary_stats = c("both", "risk", "state"),
+  summary_stats = c("both", "event_prob", "state"),
   summary_spec = NULL,
   ctx = NULL
 ) {
@@ -22,12 +22,12 @@ forecast <- function(
   return <- match.arg(return)
 
   if (missing(engine) || is.null(engine)) stop("engine is required.", call. = FALSE)
-  if (!inherits(engine, "Engine")) stop("engine must be a patientSimCore::Engine.", call. = FALSE)
+  if (!inherits(engine, "Engine")) stop("engine must be a fluxCore::Engine.", call. = FALSE)
 
-  if (inherits(patients, "Patient")) patients <- list(p1 = patients)
-  if (!is.list(patients) || length(patients) == 0L) stop("patients must be a non-empty list of Patient objects.", call. = FALSE)
+  if (inherits(entities, "Entity")) entities <- list(p1 = entities)
+  if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
 
-  times <- .psf_as_numeric_time(times, name = "times", ctx = ctx)
+  times <- .fluxf_as_numeric_time(times, name = "times", ctx = ctx)
   if (!is.numeric(times) || length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
   times <- sort(unique(times))
 
@@ -49,15 +49,15 @@ forecast <- function(
   }
 
   # Capture and validate schema metadata (sparse, stored once per forecast object).
-  # We require schemas to be identical across patients within a single forecast call.
-  schema0 <- patients[[1]]$schema
+  # We require schemas to be identical across entities within a single forecast call.
+  schema0 <- entities[[1]]$schema
   if (is.null(schema0) || !is.list(schema0) || is.null(names(schema0))) {
-    stop("patients[[1]] is missing a valid $schema.", call. = FALSE)
+    stop("entities[[1]] is missing a valid $schema.", call. = FALSE)
   }
-  for (nm in names(patients)) {
-    sc <- patients[[nm]]$schema
+  for (nm in names(entities)) {
+    sc <- entities[[nm]]$schema
     if (!identical(sc, schema0)) {
-      stop("All patients passed to forecast() must share an identical schema.", call. = FALSE)
+      stop("All entities passed to forecast() must share an identical schema.", call. = FALSE)
     }
   }
 
@@ -65,11 +65,11 @@ forecast <- function(
 
   if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list, a list of lists, or NULL.", call. = FALSE)
 
-  # Use patientSimCore::run_cohort to run R = N * P * S simulations.
+  # Use fluxCore::run_cohort to run R = N * P * S simulations.
 
-  out <- suppressWarnings(patientSimCore::run_cohort(
+  out <- suppressWarnings(fluxCore::run_cohort(
     engine = engine,
-    patients = patients,
+    entities = entities,
     n_param_draws = P,
     n_sims = S,
     param_draws = param_sets,
@@ -88,24 +88,22 @@ forecast <- function(
   # Core guarantees that runs[[i]] corresponds to idx[i, ] (run_index alignment
   # invariant). Forecast can therefore populate matrices directly in run order.
 
-  # Map patient ids to integer IDs for compactness
-  patient_levels <- unique(idx$patient_id)
-  patient_id_int <- match(idx$patient_id, patient_levels)
+  # Map entity ids to integer IDs for compactness
+  entity_levels <- unique(idx$entity_id)
+  entity_id_int <- match(idx$entity_id, entity_levels)
 
-  patient_tags <- vapply(patient_levels, function(pid) {
-    p <- patients[[pid]]
+  entity_tags <- vapply(entity_levels, function(pid) {
+    p <- entities[[pid]]
     if (is.null(p)) return(NA_character_)
     if (!is.null(p$id)) as.character(p$id) else NA_character_
   }, character(1))
 
   run_index <- data.frame(
     run_id = idx$run_id,
-    patient_id = patient_id_int,
-    patient_tag = patient_tags[patient_id_int],
-    # Canonical naming for parameter draws in the ecosystem is draw_id.
-    draw_id = idx$draw_id,
-    # Back-compat alias (used in some early streaming code).
-    param_set_id = idx$draw_id,
+    entity_id = entity_id_int,
+    entity_tag = entity_tags[entity_id_int],
+    # Canonical naming for parameter draws in the ecosystem is param_draw_id.
+    param_draw_id = idx$param_draw_id,
     sim_id = idx$sim_id,
     stringsAsFactors = FALSE
   )
@@ -134,7 +132,7 @@ forecast <- function(
   # Populate matrices
   for (i in seq_len(R)) {
     r <- runs[[i]]
-    p <- r$patient
+    p <- r$entity
     last_time <- p$last_time
 
     # first event time per type
@@ -184,8 +182,8 @@ forecast <- function(
   }
 
   meta <- list(
-    patient_levels = patient_levels,
-    patient_tags = patient_tags,
+    entity_levels = entity_levels,
+    entity_tags = entity_tags,
     schema = schema0,
     ctx = ctx,
     seed = seed,
@@ -195,7 +193,7 @@ forecast <- function(
 
   if (return == "none") return(invisible(NULL))
 
-  # Memory-light summaries (do not materialize a ps_forecast).
+  # Memory-light summaries (do not materialize a flux_forecast).
   
 
 
@@ -214,20 +212,20 @@ forecast <- function(
 
   
 if (return == "summary_stats") {
-  summary_stats <- match.arg(summary_stats, c("both", "risk", "state"))
+  summary_stats <- match.arg(summary_stats, c("both", "event_prob", "state"))
 
   res <- list()
 
-  if (summary_stats %in% c("risk", "both")) {
-    if (is.null(summary_spec)) stop("summary_spec must be provided when summary_stats includes 'risk'.", call. = FALSE)
-    res$risk <- do.call(risk, c(list(x = x), summary_spec))
+  if (summary_stats %in% c("event_prob", "both")) {
+    if (is.null(summary_spec)) stop("summary_spec must be provided when summary_stats includes 'event_prob'.", call. = FALSE)
+    res$event_prob <- do.call(event_prob, c(list(x = x), summary_spec))
   }
 
   if (summary_stats %in% c("state", "both")) {
     res$state <- state_summary(x, vars = vars, times = times)
   }
 
-  if (summary_stats == "risk") return(res$risk)
+  if (summary_stats == "event_prob") return(res$event_prob)
   if (summary_stats == "state") return(res$state)
   return(res)
 }

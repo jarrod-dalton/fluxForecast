@@ -1,4 +1,4 @@
 library(testthat)
-library(patientSimForecast)
+library(fluxForecast)
 
-test_check("patientSimForecast")
+test_check("fluxForecast")

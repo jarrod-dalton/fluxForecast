@@ -11,26 +11,26 @@ draws <- function(
   ctx = NULL,
   cohort = c("timepoint", "fixed")
 ) {
-  if (!inherits(x, "ps_forecast")) stop("x must be a ps_forecast.", call. = FALSE)
+  if (!inherits(x, "flux_forecast")) stop("x must be a flux_forecast.", call. = FALSE)
   cohort <- match.arg(cohort)
 
   var <- unique(as.character(var))
   if (length(var) < 1L) stop("var must be a non-empty character vector.", call. = FALSE)
   if (!all(var %in% x$vars)) {
     missing_vars <- var[!var %in% x$vars]
-    stop("Unknown var(s) not stored in ps_forecast: ", paste(missing_vars, collapse = ", "), call. = FALSE)
+    stop("Unknown var(s) not stored in flux_forecast: ", paste(missing_vars, collapse = ", "), call. = FALSE)
   }
 
   if (is.null(times)) {
     times <- x$times
   } else {
-    times <- sort(unique(.psf_as_numeric_time(times, name = "times", ctx = ctx)))
+    times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx)))
     if (!all(times %in% x$times)) stop("All times must be members of x$times.", call. = FALSE)
   }
   t_idx <- match(times, x$times)
 
   if (is.null(start_time)) start_time <- x$time0
-  start_time <- .psf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
   if (!start_time %in% x$times) stop("start_time must be one of x$times (v1 restriction).", call. = FALSE)
   t_start_idx <- match(start_time, x$times)
 

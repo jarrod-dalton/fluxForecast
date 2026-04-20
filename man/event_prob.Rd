@@ -1,13 +1,14 @@
-\name{risk}
-\alias{risk}
-\title{Compute event risk curves from a forecast ensemble}
-\description{Compute cumulative event risk by time for a fixed cohort defined at a start time.}
+\name{event_prob}
+\alias{event_prob}
+\title{Compute event probability curves from a forecast ensemble}
+\description{Compute cumulative event probability by time for a fixed cohort defined at a start time.}
 \usage{
-risk(x, event, by = c("run", "patient", "patient_draw"), times = NULL, start_time = NULL, terminal_events = NULL,
+event_prob(x, event, by = c("run", "entity", "entity_param_draw"),
+     times = NULL, start_time = NULL, terminal_events = NULL,
      condition_on_events = NULL, eligible = NULL, ctx = NULL)
 }
 \arguments{
-  \item{x}{A \code{ps_forecast}.}
+  \item{x}{A \code{flux_forecast}.}
   \item{event}{Character vector of event types of interest.}
   \item{by}{Grouping level for summaries. See \code{state_summary} for definitions. Default is \code{"run"}.}
   \item{times}{Optional subset of forecast times.}
@@ -17,4 +18,4 @@ risk(x, event, by = c("run", "patient", "patient_draw"), times = NULL, start_tim
   \item{eligible}{Optional function \code{f(snapshot, time, ctx)} returning TRUE/FALSE. Evaluated at \code{start_time} only.}
   \item{ctx}{Optional list passed to \code{eligible}.}
 }
-\value{A \code{ps_risk} object.}
+\value{A \code{flux_event_prob} object.}
