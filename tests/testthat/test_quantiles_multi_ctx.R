@@ -19,6 +19,7 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
   # - At each tick time t in ctx$times, set x <- shift + t.
   # - alive remains TRUE throughout.
   toy_bundle <- list(
+    time_spec = fluxCore::time_spec(unit = "days"),
     propose_events = function(entity, ctx = NULL, process_ids = NULL, current_proposals = NULL) {
       pid <- "tick"
       if (!is.null(process_ids) && !(pid %in% process_ids)) return(list())

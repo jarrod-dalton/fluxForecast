@@ -27,7 +27,7 @@ forecast <- function(
   if (inherits(entities, "Entity")) entities <- list(p1 = entities)
   if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
 
-  times <- .fluxf_as_numeric_time(times, name = "times", ctx = ctx)
+  times <- .fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = engine$time_spec)
   if (!is.numeric(times) || length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
   times <- sort(unique(times))
 
@@ -62,8 +62,6 @@ forecast <- function(
   }
 
   horizon <- max(times)
-
-  if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list, a list of lists, or NULL.", call. = FALSE)
 
   # Use fluxCore::run_cohort to run R = N * P * S simulations.
 
@@ -186,6 +184,7 @@ forecast <- function(
     entity_tags = entity_tags,
     schema = schema0,
     ctx = ctx,
+    time_spec = engine$time_spec,
     seed = seed,
     S = S,
     P = P

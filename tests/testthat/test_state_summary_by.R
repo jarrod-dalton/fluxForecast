@@ -25,6 +25,7 @@ make_toy_bundle <- function() {
   }
 
   list(
+    time_spec = fluxCore::time_spec(unit = "days"),
     propose_events = propose_events,
     transition = transition,
     stop = stop,
@@ -66,4 +67,3 @@ test_that("state_summary supports by='entity'", {
   expect_equal(nrow(df0), 2L)
   expect_equal(sort(as.numeric(df0$mean)), c(0, 10))
 })
-

@@ -98,11 +98,11 @@ event_prob_forecast <- function(
   by <- match.arg(by)
   if (inherits(entities, "Entity")) entities <- list(p1 = entities)
   if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
-  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx)))
+  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = engine$time_spec)))
   if (length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
 
   if (is.null(start_time)) start_time <- min(times)
-  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx, time_spec = engine$time_spec)
   if (length(start_time) != 1L || !is.finite(start_time)) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% times) stop("start_time must be one of times (v1 restriction).", call. = FALSE)
 
@@ -116,8 +116,6 @@ event_prob_forecast <- function(
   } else {
     if (!is.list(param_sets) || length(param_sets) < 1L) stop("param_sets must be a non-empty list of parameter lists.", call. = FALSE)
   }
-
-  if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list or NULL.", call. = FALSE)
 
   N <- length(entities)
   P <- length(param_sets)
@@ -143,7 +141,8 @@ event_prob_forecast <- function(
     p0 <- entities[[pid]]
     p <- p0$clone(deep = TRUE)
 
-    ctx_run <- if (is.null(ctx)) list() else ctx
+    ctx_base <- .fluxf_ctx_for_draw(ctx, param_draw_id = did, n_param_sets = P)
+    ctx_run <- if (is.null(ctx_base)) list() else ctx_base
     ctx_run$params <- param_sets[[did]]
 
     out <- engine$run(
@@ -314,11 +313,11 @@ state_summary_forecast <- function(
   if (inherits(entities, "Entity")) entities <- list(p1 = entities)
   if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
 
-  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx)))
+  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = engine$time_spec)))
   if (length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
 
   if (is.null(start_time)) start_time <- min(times)
-  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx, time_spec = engine$time_spec)
   if (length(start_time) != 1L || !is.finite(start_time)) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% times) stop("start_time must be one of times (v1 restriction).", call. = FALSE)
 
@@ -327,8 +326,6 @@ state_summary_forecast <- function(
   } else {
     if (!is.list(param_sets) || length(param_sets) < 1L) stop("param_sets must be a non-empty list of parameter lists.", call. = FALSE)
   }
-
-  if (!is.null(ctx) && !is.list(ctx)) stop("ctx must be a list or NULL.", call. = FALSE)
 
   N <- length(entities)
   P <- length(param_sets)
@@ -366,7 +363,8 @@ state_summary_forecast <- function(
     p0 <- entities[[pid]]
     p <- p0$clone(deep = TRUE)
 
-    ctx_run <- if (is.null(ctx)) list() else ctx
+    ctx_base <- .fluxf_ctx_for_draw(ctx, param_draw_id = did, n_param_sets = P)
+    ctx_run <- if (is.null(ctx_base)) list() else ctx_base
     ctx_run$params <- param_sets[[did]]
 
     out <- engine$run(

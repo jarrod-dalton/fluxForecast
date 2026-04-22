@@ -4,6 +4,7 @@ library(fluxForecast)
 
 test_that("forecast rejects calendar-time inputs", {
   bundle <- list(
+    time_spec = fluxCore::time_spec(unit = "days"),
     propose_events = function(entity, ctx, ...) {
       if (entity$last_time < 1) {
         return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
@@ -27,6 +28,7 @@ test_that("forecast rejects calendar-time inputs", {
 
 test_that("event_prob/draws reject calendar-time inputs", {
   bundle <- list(
+    time_spec = fluxCore::time_spec(unit = "days"),
     propose_events = function(entity, ctx, ...) {
       if (entity$last_time < 1) {
         return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
@@ -41,7 +43,7 @@ test_that("event_prob/draws reject calendar-time inputs", {
   engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
   p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
 
-  fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object", ctx = list(time = list(unit = "days")))
+  fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object")
 
   expect_error(
     event_prob(fx, event = "visit", start_time = as.Date("2000-01-01")),
@@ -52,6 +54,62 @@ test_that("event_prob/draws reject calendar-time inputs", {
   expect_error(
     draws(fx, var = "alive", times = as.Date(c("2000-01-01", "2000-01-02"))),
     "Calendar time inputs are out of scope",
+    fixed = TRUE
+  )
+})
+
+test_that("forecast errors when runtime ctx attempts to override canonical time spec", {
+  bundle <- list(
+    time_spec = fluxCore::time_spec(unit = "years"),
+    propose_events = function(entity, ctx, ...) {
+      if (entity$last_time < 1) {
+        return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
+      }
+      list()
+    },
+    transition = function(entity, event, ctx) list(),
+    stop = function(entity, event, ctx) TRUE,
+    refresh_rules = function(...) "ALL"
+  )
+
+  engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
+  p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
+
+  expect_error(
+    forecast(
+      engine = engine,
+      entities = list(p1 = p),
+      times = c(0, 1),
+      S = 1,
+      backend = "none",
+      return = "none",
+      ctx = list(time = list(unit = "days"))
+    ),
+    "override canonical model time spec"
+  )
+})
+
+test_that("event_prob uses canonical model unit label in calendar-time guard message", {
+  bundle <- list(
+    time_spec = fluxCore::time_spec(unit = "hours"),
+    propose_events = function(entity, ctx, ...) {
+      if (entity$last_time < 1) {
+        return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
+      }
+      list()
+    },
+    transition = function(entity, event, ctx) list(),
+    stop = function(entity, event, ctx) TRUE,
+    refresh_rules = function(...) "ALL"
+  )
+
+  engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
+  p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
+  fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object")
+
+  expect_error(
+    event_prob(fx, event = "visit", start_time = as.Date("2000-01-01")),
+    "unit: 'hours'",
     fixed = TRUE
   )
 })

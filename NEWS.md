@@ -1,3 +1,12 @@
+## 1.5.1
+
+- Enforced canonical-time usage across forecast APIs: removed runtime
+  `time_unit` argument paths from public functions and docs.
+- Forecast, event-probability, draws, and streaming summaries now consume the
+  engine/bundle canonical `time_spec` metadata consistently.
+- Added tests for canonical time propagation and runtime context conflict
+  rejection.
+
 ## 1.5.0
 
 - Completed public API transition from risk naming to event-probability naming: event_prob(), event_prob_forecast(), and related docs/tests.

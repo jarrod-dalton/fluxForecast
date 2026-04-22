@@ -42,6 +42,7 @@ make_stop_bundle <- function() {
   }
 
   list(
+    time_spec = fluxCore::time_spec(unit = "days"),
     propose_events = propose_events,
     transition = transition,
     stop = stop
