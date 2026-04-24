@@ -3,9 +3,9 @@
 \title{Run forward-simulation forecasts for one or more entities}
 \description{
 Runs forward simulations using a fluxCore Engine and collects snapshots at the requested
-times. By convention, models expose an \code{alive} state variable to indicate vital status
-(alive vs dead). This is separate from things like discharge or loss to follow-up, which can be
-represented with other state variables (e.g., \code{active_followup}).
+times. If models expose an \code{alive} state variable, it is used for lifecycle eligibility.
+If \code{alive} is omitted, lifecycle status is derived from \code{bundle$terminal_events} when
+declared, otherwise it defaults to active wherever runs are defined.
 }
 \usage{
 forecast(engine, entities, times, S = 200, param_sets = NULL, vars = NULL,
@@ -21,7 +21,7 @@ forecast(engine, entities, times, S = 200, param_sets = NULL, vars = NULL,
   \item{times}{Numeric vector of forecast times.}
   \item{S}{Number of simulations per (entity, param_set).}
   \item{param_sets}{Optional list of parameter lists.}
-  \item{vars}{Snapshot variables to store; \code{alive} is always included.}
+  \item{vars}{Snapshot variables to store. If schema includes \code{alive}, it is always included.}
   \item{max_events}{Maximum number of events per run.}
   \item{seed}{Optional base seed.}
   \item{backend}{Parallel backend. One of \code{c("none","mclapply","cluster","future")}. 

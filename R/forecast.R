@@ -41,13 +41,6 @@ forecast <- function(
   }
   P <- length(param_sets)
 
-  if (is.null(vars)) {
-    vars <- "alive"
-  } else {
-    vars <- unique(as.character(vars))
-    vars <- unique(c(vars, "alive"))
-  }
-
   # Capture and validate schema metadata (sparse, stored once per forecast object).
   # We require schemas to be identical across entities within a single forecast call.
   schema0 <- entities[[1]]$schema
@@ -58,6 +51,48 @@ forecast <- function(
     sc <- entities[[nm]]$schema
     if (!identical(sc, schema0)) {
       stop("All entities passed to forecast() must share an identical schema.", call. = FALSE)
+    }
+  }
+  has_alive_schema <- "alive" %in% names(schema0)
+
+  model_event_catalog <- .fluxf_bundle_event_catalog(engine$bundle)
+  model_terminal_events <- .fluxf_bundle_terminal_events(engine$bundle)
+
+  if (is.null(vars)) {
+    if (has_alive_schema) {
+      vars <- "alive"
+    } else {
+      schema_vars <- names(schema0)
+      if (length(schema_vars) < 1L) {
+        stop("schema must define at least one state variable when 'alive' is not present.", call. = FALSE)
+      }
+      vars <- schema_vars[1]
+    }
+  } else {
+    vars <- unique(as.character(vars))
+  }
+
+  if (has_alive_schema) {
+    vars <- unique(c(vars, "alive"))
+  } else if ("alive" %in% vars) {
+    stop("vars includes 'alive', but the model schema does not define an 'alive' state variable.", call. = FALSE)
+  }
+
+  if (length(vars) < 1L) {
+    stop("vars must contain at least one state variable.", call. = FALSE)
+  }
+
+  if (!has_alive_schema) {
+    if (!is.null(model_terminal_events)) {
+      .fluxf_warn_once(
+        "forecast_lifecycle_terminal_fallback",
+        "Model schema omits 'alive'; deriving lifecycle status from bundle$terminal_events."
+      )
+    } else {
+      .fluxf_warn_once(
+        "forecast_lifecycle_defined_fallback",
+        "Model schema omits 'alive' and bundle$terminal_events is not set; treating lifecycle status as active wherever runs are defined."
+      )
     }
   }
 
@@ -127,6 +162,19 @@ forecast <- function(
   first_event_time <- matrix(Inf, nrow = R, ncol = K)
   colnames(first_event_time) <- all_event_types
 
+  if (!has_alive_schema && !is.null(model_terminal_events) && is.null(model_event_catalog)) {
+    unseen <- setdiff(model_terminal_events, all_event_types)
+    if (length(unseen) > 0L) {
+      .fluxf_warn_once(
+        "forecast_terminal_unseen_without_catalog",
+        paste0(
+          "bundle$terminal_events contains labels not observed in this forecast run (and no bundle$event_catalog is declared): ",
+          paste(unseen, collapse = ", ")
+        )
+      )
+    }
+  }
+
   # Populate matrices
   for (i in seq_len(R)) {
     r <- runs[[i]]
@@ -147,6 +195,7 @@ forecast <- function(
         }
       }
     }
+    terminal_time <- .fluxf_first_event_time_any(ev, model_terminal_events)
 
     for (tt in seq_along(times)) {
       t <- times[[tt]]
@@ -154,13 +203,18 @@ forecast <- function(
         defined[i, tt] <- TRUE
         snap <- p$snapshot_at_time(t, vars = vars)
 
-        if (is.null(snap[["alive"]])) {
-          stop("snapshot_at_time() did not return an 'alive' field. Ensure schema includes 'alive' (logical).", call. = FALSE)
+        if (has_alive_schema) {
+          if (is.null(snap[["alive"]])) {
+            stop("snapshot_at_time() did not return an 'alive' field. Ensure schema includes 'alive' (logical).", call. = FALSE)
+          }
+          # Preserve NA if a model ever represents unknown lifecycle status at a defined time.
+          av <- norm_bool(snap[["alive"]])
+          alive[i, tt] <- na_safe_true1(av)
+        } else if (is.finite(terminal_time)) {
+          alive[i, tt] <- t < terminal_time
+        } else {
+          alive[i, tt] <- TRUE
         }
-        # Preserve NA if a model ever represents unknown vital status at a defined time.
-        # (Core v1.0 enforces alive is non-NA, but downstream code should be robust.)
-        av <- snap[["alive"]]
-        alive[i, tt] <- na_safe_true1(av)
 
         for (v in vars) {
           val <- snap[[v]]

@@ -6,7 +6,8 @@
 #
 # Default semantics:
 # - Fixed cohort defined at start_time (default time0 = min(times)).
-# - Base eligibility requires snapshot_at_time(start_time)$alive == TRUE.
+# - Base lifecycle eligibility uses schema `alive` when present; otherwise
+#   bundle$terminal_events when declared; otherwise lifecycle is active where defined.
 # - Optional event-free conditioning by start_time (terminal_events,
 #   condition_on_events).
 # - Optional eligible(snapshot, time, ctx) predicate evaluated at start_time.
@@ -32,18 +33,12 @@
   as.integer(seed + stream_id)
 }
 
-.first_event_time_any <- function(events_df, event_set) {
-  if (is.null(events_df) || nrow(events_df) == 0L) return(Inf)
-  et <- as.character(events_df$event_type)
-  keep <- et %in% event_set
-  if (!any(keep)) return(Inf)
-  min(as.numeric(events_df$time[keep]))
-}
-
 .eligibility_at_start <- function(
   entity,
   events_df,
   start_time,
+  model_has_alive,
+  model_terminal_events,
   terminal_events,
   condition_on_events,
   eligible,
@@ -52,18 +47,24 @@
   # Must be defined at start_time
   if (entity$last_time < start_time) return(FALSE)
   snap <- entity$snapshot_at_time(start_time)
-  if (is.null(snap$alive)) {
-    stop("snapshot_at_time() did not return an 'alive' field. Ensure schema includes 'alive' (logical).", call. = FALSE)
+
+  if (is_true1(model_has_alive)) {
+    if (is.null(snap$alive)) {
+      stop("snapshot_at_time() did not return an 'alive' field. Ensure schema includes 'alive' (logical).", call. = FALSE)
+    }
+    # Treat NA as not eligible (unknown lifecycle status at start_time).
+    if (is.na(snap$alive) || !identical(snap$alive, TRUE)) return(FALSE)
+  } else if (!is.null(model_terminal_events)) {
+    ft_model <- .fluxf_first_event_time_any(events_df, model_terminal_events)
+    if (is.finite(ft_model) && ft_model <= start_time) return(FALSE)
   }
-  # Treat NA as not eligible (unknown vital status at start_time).
-  if (is.na(snap$alive) || !identical(snap$alive, TRUE)) return(FALSE)
 
   if (!is.null(terminal_events)) {
-    ft <- .first_event_time_any(events_df, terminal_events)
+    ft <- .fluxf_first_event_time_any(events_df, terminal_events)
     if (is.finite(ft) && ft <= start_time) return(FALSE)
   }
   if (!is.null(condition_on_events)) {
-    ft <- .first_event_time_any(events_df, condition_on_events)
+    ft <- .fluxf_first_event_time_any(events_df, condition_on_events)
     if (is.finite(ft) && ft <= start_time) return(FALSE)
   }
 
@@ -110,6 +111,28 @@ event_prob_forecast <- function(
   if (length(event) < 1L) stop("event must be a non-empty character vector.", call. = FALSE)
   if (!is.null(terminal_events)) terminal_events <- unique(as.character(terminal_events))
   if (!is.null(condition_on_events)) condition_on_events <- unique(as.character(condition_on_events))
+
+  has_alive_by_entity <- vapply(entities, function(p) "alive" %in% names(p$schema), logical(1))
+  if (any(has_alive_by_entity) && !all(has_alive_by_entity)) {
+    stop("All entities must either define 'alive' in schema or all omit it.", call. = FALSE)
+  }
+  model_has_alive <- all(has_alive_by_entity)
+  model_terminal_events <- .fluxf_bundle_terminal_events(engine$bundle)
+  model_event_catalog <- .fluxf_bundle_event_catalog(engine$bundle)
+
+  if (!model_has_alive) {
+    if (!is.null(model_terminal_events)) {
+      .fluxf_warn_once(
+        "streaming_lifecycle_terminal_fallback",
+        "Model schema omits 'alive'; deriving lifecycle status from bundle$terminal_events."
+      )
+    } else {
+      .fluxf_warn_once(
+        "streaming_lifecycle_defined_fallback",
+        "Model schema omits 'alive' and bundle$terminal_events is not set; treating lifecycle status as active wherever runs are defined."
+      )
+    }
+  }
 
   if (is.null(param_sets)) {
     param_sets <- list(engine$bundle$params %||% list())
@@ -159,6 +182,8 @@ event_prob_forecast <- function(
       entity = out$entity,
       events_df = ev,
       start_time = start_time,
+      model_has_alive = model_has_alive,
+      model_terminal_events = model_terminal_events,
       terminal_events = terminal_events,
       condition_on_events = condition_on_events,
       eligible = eligible,
@@ -169,9 +194,17 @@ event_prob_forecast <- function(
       return(list(eligible = FALSE, contrib = integer(length(times)), entity_id = row$entity_id, entity_tag = ptag, param_draw_id = row$param_draw_id, sim_id = row$sim_id))
     }
 
-    ft_event <- .first_event_time_any(ev, event)
+    ft_event <- .fluxf_first_event_time_any(ev, event)
     contrib <- as.integer(ft_event <= times)
-    list(eligible = TRUE, contrib = contrib, entity_id = row$entity_id, entity_tag = ptag, param_draw_id = row$param_draw_id, sim_id = row$sim_id)
+    list(
+      eligible = TRUE,
+      contrib = contrib,
+      entity_id = row$entity_id,
+      entity_tag = ptag,
+      param_draw_id = row$param_draw_id,
+      sim_id = row$sim_id,
+      observed_event_types = sort(unique(as.character(ev$event_type)))
+    )
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -200,6 +233,20 @@ event_prob_forecast <- function(
       future.apply::future_lapply(seq_along(rows), run_fun)
     }
   )
+
+  if (!model_has_alive && !is.null(model_terminal_events) && is.null(model_event_catalog)) {
+    observed <- sort(unique(unlist(lapply(parts, function(z) z$observed_event_types))))
+    unseen <- setdiff(model_terminal_events, observed)
+    if (length(unseen) > 0L) {
+      .fluxf_warn_once(
+        "streaming_terminal_unseen_without_catalog",
+        paste0(
+          "bundle$terminal_events contains labels not observed in this streaming forecast run (and no bundle$event_catalog is declared): ",
+          paste(unseen, collapse = ", ")
+        )
+      )
+    }
+  }
 
   n_eligible <- sum(vapply(parts, function(z) is_true1(z$eligible), logical(1)))
 
@@ -327,6 +374,28 @@ state_summary_forecast <- function(
     if (!is.list(param_sets) || length(param_sets) < 1L) stop("param_sets must be a non-empty list of parameter lists.", call. = FALSE)
   }
 
+  has_alive_by_entity <- vapply(entities, function(p) "alive" %in% names(p$schema), logical(1))
+  if (any(has_alive_by_entity) && !all(has_alive_by_entity)) {
+    stop("All entities must either define 'alive' in schema or all omit it.", call. = FALSE)
+  }
+  model_has_alive <- all(has_alive_by_entity)
+  model_terminal_events <- .fluxf_bundle_terminal_events(engine$bundle)
+  model_event_catalog <- .fluxf_bundle_event_catalog(engine$bundle)
+
+  if (!model_has_alive) {
+    if (!is.null(model_terminal_events)) {
+      .fluxf_warn_once(
+        "streaming_state_lifecycle_terminal_fallback",
+        "Model schema omits 'alive'; deriving lifecycle status from bundle$terminal_events."
+      )
+    } else {
+      .fluxf_warn_once(
+        "streaming_state_lifecycle_defined_fallback",
+        "Model schema omits 'alive' and bundle$terminal_events is not set; treating lifecycle status as active wherever runs are defined."
+      )
+    }
+  }
+
   N <- length(entities)
   P <- length(param_sets)
 
@@ -381,6 +450,8 @@ state_summary_forecast <- function(
       entity = out$entity,
       events_df = ev,
       start_time = start_time,
+      model_has_alive = model_has_alive,
+      model_terminal_events = model_terminal_events,
       terminal_events = terminal_events,
       condition_on_events = condition_on_events,
       eligible = eligible,
@@ -399,11 +470,16 @@ state_summary_forecast <- function(
     bin_track <- stats::setNames(lapply(vars, function(v) list(min = Inf, max = -Inf, non_int = FALSE)), vars)
 
     p <- out$entity
+    ft_model_terminal <- .fluxf_first_event_time_any(ev, model_terminal_events)
     for (tt in seq_along(times)) {
       t <- times[[tt]]
       if (p$last_time < t) next
       snap <- p$snapshot_at_time(t)
-      if (is.na(snap$alive) || !identical(snap$alive, TRUE)) next
+      if (is_true1(model_has_alive)) {
+        if (is.na(snap$alive) || !identical(snap$alive, TRUE)) next
+      } else if (is.finite(ft_model_terminal) && t >= ft_model_terminal) {
+        next
+      }
       for (v in vars) {
         val <- snap[[v]]
         if (is.null(val)) next
@@ -426,20 +502,32 @@ state_summary_forecast <- function(
             nm <- as.character(as.integer(val))
             slot <- cat_part[[v]][[tt]]
             if (is.null(slot)) slot <- integer(0)
-            slot[[nm]] <- (slot[[nm]] %||% 0L) + 1L
+            prev <- if (!is.null(names(slot)) && (nm %in% names(slot))) slot[[nm]] else 0L
+            slot[[nm]] <- prev + 1L
             cat_part[[v]][[tt]] <- slot
           }
         } else {
           nm <- as.character(val)
           slot <- cat_part[[v]][[tt]]
           if (is.null(slot)) slot <- integer(0)
-          slot[[nm]] <- (slot[[nm]] %||% 0L) + 1L
+          prev <- if (!is.null(names(slot)) && (nm %in% names(slot))) slot[[nm]] else 0L
+          slot[[nm]] <- prev + 1L
           cat_part[[v]][[tt]] <- slot
         }
       }
     }
 
-    list(eligible = TRUE, entity_id = pid, entity_tag = ptag, param_draw_id = did, sim_id = row$sim_id, num = num_part, cat = cat_part, bin_track = bin_track)
+    list(
+      eligible = TRUE,
+      entity_id = pid,
+      entity_tag = ptag,
+      param_draw_id = did,
+      sim_id = row$sim_id,
+      num = num_part,
+      cat = cat_part,
+      bin_track = bin_track,
+      observed_event_types = sort(unique(as.character(ev$event_type)))
+    )
   }
 
   rows <- split(grid, seq_len(nrow(grid)))
@@ -468,6 +556,20 @@ state_summary_forecast <- function(
       future.apply::future_lapply(seq_along(rows), run_fun)
     }
   )
+
+  if (!model_has_alive && !is.null(model_terminal_events) && is.null(model_event_catalog)) {
+    observed <- sort(unique(unlist(lapply(outs, function(z) z$observed_event_types))))
+    unseen <- setdiff(model_terminal_events, observed)
+    if (length(unseen) > 0L) {
+      .fluxf_warn_once(
+        "streaming_state_terminal_unseen_without_catalog",
+        paste0(
+          "bundle$terminal_events contains labels not observed in this streaming state summary run (and no bundle$event_catalog is declared): ",
+          paste(unseen, collapse = ", ")
+        )
+      )
+    }
+  }
 
   # Group eligible run contributions
   outs <- Filter(Negate(is.null), outs)
@@ -521,7 +623,8 @@ state_summary_forecast <- function(
           cur <- cat_tot[[v]][[tt]]
           if (is.null(cur)) cur <- integer(0)
           for (nm in names(slot)) {
-            cur[[nm]] <- (cur[[nm]] %||% 0L) + slot[[nm]]
+            prev <- if (!is.null(names(cur)) && (nm %in% names(cur))) cur[[nm]] else 0L
+            cur[[nm]] <- prev + slot[[nm]]
           }
           cat_tot[[v]][[tt]] <- cur
         }
