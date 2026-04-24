@@ -1,3 +1,11 @@
+## 1.8.0
+
+- Added lifecycle fallback semantics in forecast summaries: supports explicit
+  `alive` state when present and robust fallback pathways when lifecycle state
+  is represented via terminal-event definitions.
+- Added unit tests to lock lifecycle fallback behavior and edge cases.
+- Added README release/download badges.
+
 ## 1.7.0
 
 - Coordinated ecosystem release alignment to version 1.7.0.
