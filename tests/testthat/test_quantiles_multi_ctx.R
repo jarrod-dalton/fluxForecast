@@ -4,7 +4,7 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
   times <- c(0, 1, 2)
 
   # Extend the default schema with a numeric state variable we will track.
-  schema <- fluxCore::default_entity_schema()
+  schema <- test_entity_schema()
   schema[["x"]] <- list(
     type = "continuous",
     default = 0,
@@ -52,7 +52,7 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
   )
 
   # One entity.
-  pat <- fluxCore::new_entity(
+  pat <- fluxCore::Entity$new(
     init = list(age = 40, miles_to_work = 10, alive = TRUE, active_followup = TRUE, x = 0),
     schema = schema
   )

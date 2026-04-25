@@ -1,3 +1,9 @@
+## 1.9.0
+
+- Coordinated ecosystem release alignment to version 1.9.0.
+- Tests no longer depend on `fluxCore:::default_entity_schema()`; Forecast test fixtures now define local schema helpers.
+- Dependency floor updated to `fluxCore (>= 1.9.0)`.
+
 ## 1.8.0
 
 - Added lifecycle fallback semantics in forecast summaries: supports explicit

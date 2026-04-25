@@ -10,7 +10,7 @@ make_no_alive_schema <- function() {
 }
 
 make_alive_schema <- function() {
-  schema <- fluxCore::default_entity_schema()
+  schema <- test_entity_schema()
   schema$x <- list(type = "continuous", default = 0, coerce = as.numeric)
   schema
 }
@@ -78,7 +78,7 @@ make_alive_precedence_bundle <- function() {
 
 test_that("forecast derives lifecycle from bundle terminal_events when schema omits alive", {
   schema <- make_no_alive_schema()
-  p <- fluxCore::new_entity(init = list(phase = "idle", x = 0), schema = schema, time0 = 0)
+  p <- fluxCore::Entity$new(init = list(phase = "idle", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_terminal_bundle_no_alive()
   provider <- list(load = function(model_spec = NULL, ...) bundle)
@@ -103,7 +103,7 @@ test_that("forecast derives lifecycle from bundle terminal_events when schema om
 
 test_that("forecast falls back to lifecycle-active wherever defined when alive and terminal_events are absent", {
   schema <- make_no_alive_schema()
-  p <- fluxCore::new_entity(init = list(phase = "idle", x = 0), schema = schema, time0 = 0)
+  p <- fluxCore::Entity$new(init = list(phase = "idle", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_defined_only_bundle_no_alive()
   provider <- list(load = function(model_spec = NULL, ...) bundle)
@@ -124,7 +124,7 @@ test_that("forecast falls back to lifecycle-active wherever defined when alive a
 
 test_that("modeled alive takes precedence over bundle terminal_events fallback", {
   schema <- make_alive_schema()
-  p <- fluxCore::new_entity(init = list(alive = TRUE, active_followup = TRUE, x = 0), schema = schema, time0 = 0)
+  p <- fluxCore::Entity$new(init = list(alive = TRUE, active_followup = TRUE, x = 0), schema = schema, time0 = 0)
 
   bundle <- make_alive_precedence_bundle()
   provider <- list(load = function(model_spec = NULL, ...) bundle)
@@ -145,7 +145,7 @@ test_that("modeled alive takes precedence over bundle terminal_events fallback",
 
 test_that("streaming summaries work when alive is omitted and terminal_events are declared", {
   schema <- make_no_alive_schema()
-  p <- fluxCore::new_entity(init = list(phase = "idle", x = 0), schema = schema, time0 = 0)
+  p <- fluxCore::Entity$new(init = list(phase = "idle", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_terminal_bundle_no_alive()
   provider <- list(load = function(model_spec = NULL, ...) bundle)

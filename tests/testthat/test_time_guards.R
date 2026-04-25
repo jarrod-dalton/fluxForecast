@@ -17,7 +17,7 @@ test_that("forecast rejects calendar-time inputs", {
   )
 
   engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
-  p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
+  p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
 
   expect_error(
     forecast(engine = engine, entities = list(p1 = p), times = as.Date(c("2000-01-01", "2000-01-02")), S = 1, backend = "none", return = "none"),
@@ -41,7 +41,7 @@ test_that("event_prob/draws reject calendar-time inputs", {
   )
 
   engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
-  p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
+  p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
 
   fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object")
 
@@ -73,7 +73,7 @@ test_that("forecast errors when runtime ctx attempts to override canonical time 
   )
 
   engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
-  p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
+  p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
 
   expect_error(
     forecast(
@@ -104,7 +104,7 @@ test_that("event_prob uses canonical model unit label in calendar-time guard mes
   )
 
   engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
-  p <- fluxCore::new_entity(init = list(alive = TRUE), schema = fluxCore::default_entity_schema(), time0 = 0)
+  p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
   fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object")
 
   expect_error(
