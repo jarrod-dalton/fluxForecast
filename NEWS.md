@@ -1,3 +1,8 @@
+## 1.10.0
+
+- Updated allowed schema types to include all 14 new types from fluxCore 1.10.0.
+- Dependency floor updated to `fluxCore (>= 1.10.0)`.
+
 ## 1.9.0
 
 - Coordinated ecosystem release alignment to version 1.9.0.
