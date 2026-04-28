@@ -74,26 +74,12 @@ validate_forecast <- function(x) {
   if (is.null(schema) || !is.list(schema) || is.null(names(schema)) || any(names(schema) == "")) {
     stop("flux_forecast$meta$schema must be a named list.", call. = FALSE)
   }
-  allowed_types <- c("logical", "binary", "integer", "count", "nonnegative_integer", "positive_integer", 
-                     "numeric", "nonnegative_numeric", "positive_numeric", "probability", 
-                     "categorical", "ordinal", "string", "nonempty_string", "id_string")
+  # Delegate full schema validation (including type allow-list and levels
+  # checks) to fluxCore — single source of truth.
+  fluxCore::schema_validate(schema)
   for (v in x$vars) {
-    spec <- schema[[v]]
-    if (is.null(spec) || !is.list(spec)) {
+    if (is.null(schema[[v]])) {
       stop(sprintf("flux_forecast$meta$schema is missing a spec for var '%s'.", v), call. = FALSE)
-    }
-    if (is.null(spec$type)) {
-      stop(sprintf("schema spec for '%s' must define $type.", v), call. = FALSE)
-    }
-    tp <- as.character(spec$type)
-    if (length(tp) != 1L || is.na(tp) || nchar(tp) == 0 || !(tp %in% allowed_types)) {
-      stop(sprintf("schema spec for '%s' has invalid $type.", v), call. = FALSE)
-    }
-    if (tp %in% c("binary", "categorical", "ordinal")) {
-      lev <- spec$levels
-      if (is.null(lev) || !is.character(lev) || length(lev) < 2L || any(is.na(lev)) || any(lev == "")) {
-        stop(sprintf("schema spec for '%s' must define $levels (character, length>=2) for type='%s'.", v, tp), call. = FALSE)
-      }
     }
   }
 

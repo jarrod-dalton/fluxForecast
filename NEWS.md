@@ -1,3 +1,8 @@
+## 1.10.1
+
+- `validate_forecast()` now delegates schema validation to `fluxCore::schema_validate()` — single source of truth. Removed the inline duplicated `allowed_types` list and per-var `$levels` re-check. Future fluxCore type additions/removals propagate automatically.
+- Dependency floor bumped to `fluxCore (>= 1.10.1)`.
+
 ## 1.10.0
 
 - Updated allowed schema types to include all 14 new types from fluxCore 1.10.0.
