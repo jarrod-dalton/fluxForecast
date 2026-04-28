@@ -74,7 +74,9 @@ validate_forecast <- function(x) {
   if (is.null(schema) || !is.list(schema) || is.null(names(schema)) || any(names(schema) == "")) {
     stop("flux_forecast$meta$schema must be a named list.", call. = FALSE)
   }
-  allowed_types <- c("binary", "categorical", "ordinal", "continuous", "count")
+  allowed_types <- c("logical", "binary", "integer", "count", "nonnegative_integer", "positive_integer", 
+                     "numeric", "nonnegative_numeric", "positive_numeric", "probability", 
+                     "categorical", "ordinal", "string", "nonempty_string", "id_string")
   for (v in x$vars) {
     spec <- schema[[v]]
     if (is.null(spec) || !is.list(spec)) {
