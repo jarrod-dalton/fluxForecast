@@ -77,6 +77,34 @@
   TRUE
 }
 
+#' Memory-light event risk summaries without storing all simulated trajectories
+#'
+#' Runs forward simulations and computes event risk curves as the simulations run.
+#' This returns a compact `flux_event_prob` object and avoids keeping a large
+#' `flux_forecast` (which can be memory-heavy when `S` or `times` is large).
+#'
+#' @param engine A fluxCore Engine.
+#' @param entities A list of Entity objects (or a single Entity).
+#' @param times Numeric vector of forecast times.
+#' @param event Character vector of event types of interest.
+#' @param by Grouping level for summaries. Default is `"run"`.
+#' @param S Simulations per (entity, param_set).
+#' @param param_sets Optional list of parameter lists.
+#' @param start_time Scalar time in `times` defining the fixed eligible cohort.
+#' @param terminal_events Optional event types that must be absent by `start_time`.
+#' @param condition_on_events Optional event types that must be absent by
+#'   `start_time`.
+#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE,
+#'   evaluated at `start_time`.
+#' @param ctx Optional list passed to `eligible()`.
+#' @param max_events Maximum events per run.
+#' @param seed Optional base seed.
+#' @param backend Parallel backend. One of `c("none", "mclapply", "future")`.
+#' @param n_workers Optional number of workers for `mclapply` or an ephemeral
+#'   `future::multisession` plan.
+#'
+#' @return A `flux_event_prob` object.
+#' @export
 event_prob_forecast <- function(
   engine,
   entities,
@@ -334,6 +362,40 @@ event_prob_forecast <- function(
   new_event_prob(spec = spec, cohort = cohort, result = res)
 }
 
+#' Memory-light summaries of simulated state over time
+#'
+#' Run forward simulations and compute conditional summaries of state (and
+#' derived) variables over a time grid among a fixed eligible cohort defined at
+#' `start_time`. Numeric variables return mean and standard deviation.
+#' Binary/categorical variables return level proportions.
+#'
+#' @param engine A fluxCore Engine.
+#' @param entities A list of Entity objects (or a single Entity).
+#' @param times Numeric vector of forecast times.
+#' @param vars Character vector of state/derived variable names to summarize.
+#' @param by Grouping level for summaries: `"run"` pools over all eligible runs;
+#'   `"entity"` returns one curve per entity; `"entity_param_draw"` returns one
+#'   curve per `(entity, parameter set)`.
+#' @param S Simulations per (entity, param_set).
+#' @param param_sets Optional list of parameter lists.
+#' @param start_time Time in `times` to define the eligible cohort (default
+#'   `min(times)`).
+#' @param terminal_events Optional event types that must be absent by
+#'   `start_time`.
+#' @param condition_on_events Optional event types that must be absent by
+#'   `start_time`.
+#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE
+#'   evaluated at `start_time`.
+#' @param ctx Optional list passed to `eligible()`.
+#' @param max_events Maximum events per run.
+#' @param seed Optional base seed.
+#' @param backend Parallel backend. One of `c("none", "mclapply", "future")`.
+#' @param n_workers Optional number of workers for `mclapply` or an ephemeral
+#'   `future::multisession` plan.
+#'
+#' @return A list with elements `meta`, `numeric` (named list of data frames),
+#'   and `categorical` (named list of data frames).
+#' @export
 state_summary_forecast <- function(
   engine,
   entities,

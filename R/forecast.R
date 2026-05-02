@@ -2,6 +2,39 @@
 # forecast()
 # ------------------------------------------------------------------------------
 
+#' Run forward-simulation forecasts for one or more entities
+#'
+#' Runs forward simulations using a fluxCore Engine and collects snapshots at the
+#' requested times. If models expose an `alive` state variable, it is used for
+#' lifecycle eligibility. If `alive` is omitted, lifecycle status is derived from
+#' `bundle$terminal_events` when declared, otherwise it defaults to active
+#' wherever runs are defined.
+#'
+#' @param engine A fluxCore Engine.
+#' @param entities A list of Entity objects (or a single Entity).
+#' @param times Numeric vector of forecast times.
+#' @param S Number of simulations per (entity, param_set).
+#' @param param_sets Optional list of parameter lists.
+#' @param vars Snapshot variables to store. If schema includes `alive`, it is
+#'   always included.
+#' @param max_events Maximum number of events per run.
+#' @param seed Optional base seed.
+#' @param backend Parallel backend. One of `c("none", "mclapply", "cluster", "future")`.
+#' @param n_workers Optional number of workers. For `backend = "future"`, set
+#'   workers via `future::plan()`.
+#' @param return One of `"object"`, `"summary_stats"`, or `"none"`.
+#' @param summary_stats Summary name when `return = "summary_stats"` (v1 supports
+#'   `"event_prob"` or `"state"`).
+#' @param summary_spec Named list describing the summary to compute when
+#'   `return = "summary_stats"`. For `summary_stats = "event_prob"` this is
+#'   passed to `event_prob_forecast()`. For `summary_stats = "state"` this is
+#'   passed to `state_summary_forecast()`.
+#' @param ctx Optional simulation context. Either a single list merged into each
+#'   run ctx, or a list of per-parameter-set ctx lists. Each per-draw ctx may
+#'   include its own `$params`; if so, that overrides `param_sets`.
+#'
+#' @return A `flux_forecast` object when `return = "object"`.
+#' @export
 forecast <- function(
   engine,
   entities,

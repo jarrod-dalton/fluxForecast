@@ -2,6 +2,23 @@
 # draws()
 # ------------------------------------------------------------------------------
 
+#' Extract simulated draws
+#'
+#' Extract per-run draws for one or more variables from a `flux_forecast`.
+#'
+#' @param x A `flux_forecast`.
+#' @param var Character vector of variables to extract.
+#' @param times Optional subset of forecast times.
+#' @param start_time Start time used to define a fixed cohort when
+#'   `cohort = "fixed"`.
+#' @param eligible Optional function `f(snapshot, time, ctx)` evaluated at
+#'   `start_time` only.
+#' @param ctx Optional list passed to `eligible`.
+#' @param cohort `"timepoint"` or `"fixed"`.
+#'
+#' @return A data.frame when a single variable is requested; otherwise a named
+#'   list of data.frames.
+#' @export
 draws <- function(
   x,
   var,
