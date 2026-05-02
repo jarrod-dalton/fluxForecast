@@ -1,0 +1,194 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> library(fluxForecast)
+> 
+> test_check("fluxForecast")
+Saving _problems/test_followup_stop_semantics-79.R
+Saving _problems/test_quantiles_multi_ctx-95.R
+Saving _problems/test_quantiles_multi_ctx-97.R
+Saving _problems/test_quantiles_multi_ctx-98.R
+Saving _problems/test_quantiles_multi_ctx-99.R
+Saving _problems/test_quantiles_multi_ctx-100.R
+Saving _problems/test_quantiles_multi_ctx-101.R
+Saving _problems/test_quantiles_multi_ctx-95.R
+Saving _problems/test_quantiles_multi_ctx-97.R
+Saving _problems/test_quantiles_multi_ctx-98.R
+Saving _problems/test_quantiles_multi_ctx-99.R
+Saving _problems/test_quantiles_multi_ctx-100.R
+Saving _problems/test_quantiles_multi_ctx-101.R
+Saving _problems/test_quantiles_multi_ctx-95.R
+Saving _problems/test_quantiles_multi_ctx-97.R
+Saving _problems/test_quantiles_multi_ctx-98.R
+Saving _problems/test_quantiles_multi_ctx-99.R
+Saving _problems/test_quantiles_multi_ctx-100.R
+Saving _problems/test_quantiles_multi_ctx-101.R
+Saving _problems/test_risk_and_draws-79.R
+Saving _problems/test_risk_and_draws-118.R
+Saving _problems/test_state_summary_by-61.R
+Saving _problems/test_state_summary_by-63.R
+Saving _problems/test_state_summary_by-67.R
+Saving _problems/test_state_summary_by-68.R
+[ FAIL 25 | WARN 0 | SKIP 0 | PASS 22 ]
+
+══ Failed tests ════════════════════════════════════════════════════════════════
+── Error ('test_followup_stop_semantics.R:69:3'): follow-up can stop without implying death (alive vs defined) ──
+Error: Value for 'phase' must be one of: waitlist, post_mi
+Backtrace:
+     ▆
+  1. └─fluxForecast::forecast(...) at test_followup_stop_semantics.R:69:3
+  2.   ├─base::suppressWarnings(...)
+  3.   │ └─base::withCallingHandlers(...)
+  4.   └─fluxCore::run_cohort(...)
+  5.     └─base::lapply(names(split_by_entity), run_one_entity)
+  6.       └─fluxCore (local) FUN(X[[i]], ...)
+  7.         └─fluxCore:::.run_one_entity_worker(...)
+  8.           └─engine$run(...)
+  9.             └─fluxCore (local) step_once()
+ 10.               └─entity$update(...)
+ 11.                 └─fluxCore:::.apply_changes(...)
+ 12.                   └─fluxCore:::.validate_state_value(spec, val, k, phase = "update")
+── Failure ('test_quantiles_multi_ctx.R:95:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$n` to equal 5L.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:97:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$min` to equal `min(vals)`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:98:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$q1` to equal `as.numeric(stats::quantile(vals, 0.25, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:99:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$median` to equal `as.numeric(stats::quantile(vals, 0.5, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:100:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$q3` to equal `as.numeric(stats::quantile(vals, 0.75, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:101:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$max` to equal `max(vals)`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:95:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$n` to equal 5L.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:97:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$min` to equal `min(vals)`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:98:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$q1` to equal `as.numeric(stats::quantile(vals, 0.25, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:99:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$median` to equal `as.numeric(stats::quantile(vals, 0.5, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:100:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$q3` to equal `as.numeric(stats::quantile(vals, 0.75, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:101:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$max` to equal `max(vals)`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:95:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$n` to equal 5L.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:97:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$min` to equal `min(vals)`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:98:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$q1` to equal `as.numeric(stats::quantile(vals, 0.25, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:99:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$median` to equal `as.numeric(stats::quantile(vals, 0.5, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:100:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$q3` to equal `as.numeric(stats::quantile(vals, 0.75, type = 7, names = FALSE))`.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_quantiles_multi_ctx.R:101:5'): state_summary quantiles pool correctly across multiple ctx (parameter sets) ──
+Expected `row$max` to equal `max(vals)`.
+Differences:
+target is NULL, current is numeric
+── Error ('test_risk_and_draws.R:70:3'): forecast -> event_prob() and survival() behave as expected ──
+Error: Value for 'phase' must be one of: waitlist, post_mi
+Backtrace:
+     ▆
+  1. └─fluxForecast::forecast(...) at test_risk_and_draws.R:70:3
+  2.   ├─base::suppressWarnings(...)
+  3.   │ └─base::withCallingHandlers(...)
+  4.   └─fluxCore::run_cohort(...)
+  5.     └─base::lapply(names(split_by_entity), run_one_entity)
+  6.       └─fluxCore (local) FUN(X[[i]], ...)
+  7.         └─fluxCore:::.run_one_entity_worker(...)
+  8.           └─engine$run(...)
+  9.             └─fluxCore (local) step_once()
+ 10.               └─entity$update(...)
+ 11.                 └─fluxCore:::.apply_changes(...)
+ 12.                   └─fluxCore:::.validate_state_value(spec, val, k, phase = "update")
+── Error ('test_risk_and_draws.R:109:3'): draws() returns a data.frame and respects times ──
+Error: Value for 'phase' must be one of: waitlist, transplanted, A, B
+Backtrace:
+     ▆
+  1. └─fluxForecast::forecast(...) at test_risk_and_draws.R:109:3
+  2.   ├─base::suppressWarnings(...)
+  3.   │ └─base::withCallingHandlers(...)
+  4.   └─fluxCore::run_cohort(...)
+  5.     └─base::lapply(names(split_by_entity), run_one_entity)
+  6.       └─fluxCore (local) FUN(X[[i]], ...)
+  7.         └─fluxCore:::.run_one_entity_worker(...)
+  8.           └─engine$run(...)
+  9.             └─fluxCore (local) step_once()
+ 10.               └─entity$update(...)
+ 11.                 └─fluxCore:::.apply_changes(...)
+ 12.                   └─fluxCore:::.validate_state_value(spec, val, k, phase = "update")
+── Failure ('test_state_summary_by.R:61:3'): state_summary supports by='entity' ──
+Expected `"x" %in% names(ss)` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Failure ('test_state_summary_by.R:63:3'): state_summary supports by='entity' ──
+Expected `all(c("entity_id", "time", "mean", "n") %in% names(df))` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+── Failure ('test_state_summary_by.R:67:3'): state_summary supports by='entity' ──
+Expected `nrow(df0)` to equal 2L.
+Differences:
+target is NULL, current is numeric
+── Failure ('test_state_summary_by.R:68:3'): state_summary supports by='entity' ──
+Expected `sort(as.numeric(df0$mean))` to equal `c(0, 10)`.
+Differences:
+Lengths differ: 0 is not 2
+
+[ FAIL 25 | WARN 0 | SKIP 0 | PASS 22 ]
+Error:
+! Test failures.
+Execution halted

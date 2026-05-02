@@ -1,0 +1,7 @@
+draws	draws
+event_prob	event_prob
+event_prob_forecast	event_prob_forecast
+forecast	forecast
+state_summary	state_summary
+state_summary_forecast	state_summary_forecast
+survival	survival
