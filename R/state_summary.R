@@ -178,8 +178,13 @@ out <- stats::setNames(vector("list", length(vars)), vars)
     # Determine type (declared in schema; no inference).
     spec <- x$meta$schema[[v]]
     vtype <- as.character(spec$type)
-    is_cat <- vtype %in% c("binary", "categorical", "ordinal")
-    is_cont <- vtype %in% c("continuous", "count")
+    is_cat <- vtype %in% c("binary", "categorical", "ordinal", "logical")
+    is_cont <- vtype %in% c(
+      "numeric", "nonnegative_numeric", "positive_numeric",
+      "probability", "percent",
+      "integer", "count", "nonnegative_integer", "positive_integer",
+      "continuous"  # legacy alias; fluxCore normalises to "numeric" at schema validation
+    )
 
     if (is_cont) {
       # Continuous / count: per-time summaries (by='run' only; other groupings

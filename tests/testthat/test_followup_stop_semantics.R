@@ -51,7 +51,7 @@ make_stop_bundle <- function() {
 
 test_that("follow-up can stop without implying death (alive vs defined)", {
   schema <- test_entity_schema()
-  schema[["phase"]] <- list(type = "categorical", levels = c("waitlist","post_mi"), default = "waitlist", coerce = as.character)
+  schema[["phase"]] <- list(type = "categorical", levels = c("waitlist","post_mi","post_tx"), default = "waitlist", coerce = as.character)
   schema[["x"]] <- list(type = "continuous", default = 0, coerce = as.numeric, validate = function(v) length(v) == 1L && is.finite(v))
 
   p <- fluxCore::Entity$new(
