@@ -109,6 +109,9 @@ validate_event_prob <- function(x) {
 # Print methods
 # ------------------------------------------------------------------------------
 
+#' @export
+#' @method print flux_forecast
+#' @noRd
 print.flux_forecast <- function(x, ...) {
   idx <- x$run_index
   cat("<flux_forecast>\n")
@@ -124,6 +127,9 @@ print.flux_forecast <- function(x, ...) {
   invisible(x)
 }
 
+#' @export
+#' @method print flux_event_prob
+#' @noRd
 print.flux_event_prob <- function(x, ...) {
   cat("<flux_event_prob>\n")
   ev <- x$spec$event

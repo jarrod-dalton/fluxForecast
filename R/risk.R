@@ -2,6 +2,25 @@
 # event_prob() and survival()
 # ------------------------------------------------------------------------------
 
+#' Compute event probability curves from a forecast ensemble
+#'
+#' Compute cumulative event probability by time for a fixed cohort defined at a
+#' start time.
+#'
+#' @param x A `flux_forecast`.
+#' @param event Character vector of event types of interest.
+#' @param by Grouping level for summaries. See `state_summary` for definitions.
+#'   Default is `"run"`.
+#' @param times Optional subset of forecast times.
+#' @param start_time Time in the forecast grid used to define the eligible cohort.
+#' @param terminal_events Optional event types that must be absent by `start_time`.
+#' @param condition_on_events Optional event types that must be absent by `start_time`.
+#' @param eligible Optional function `f(snapshot, time, ctx)` returning TRUE/FALSE.
+#'   Evaluated at `start_time` only.
+#' @param ctx Optional list passed to `eligible`.
+#'
+#' @return A `flux_event_prob` object.
+#' @export
 event_prob <- function(
   x,
   event,
@@ -187,6 +206,19 @@ ft_event <- first_time_any(event)
   new_event_prob(spec = spec, cohort = cohort, result = res)
 }
 
+#' Event-free curve as sugar over risk
+#'
+#' Computes event-free probability for a terminal/composite endpoint specified by
+#' the user.
+#'
+#' @param x A `flux_forecast`.
+#' @param terminal_events Character vector of event types defining the
+#'   terminal/composite endpoint.
+#' @param ... Passed to `event_prob`.
+#'
+#' @return A `flux_event_prob` object with an additional column `event_free` in
+#'   `result`.
+#' @export
 survival <- function(x, terminal_events, ...) {
   if (missing(terminal_events) || is.null(terminal_events) || length(terminal_events) < 1L) {
     stop("survival() requires terminal_events (character vector).", call. = FALSE)

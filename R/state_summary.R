@@ -2,6 +2,29 @@
 # state_summary()
 # ------------------------------------------------------------------------------
 
+#' Summarize forecasted state variables over time
+#'
+#' Summarize the distribution of state variables at requested times among runs
+#' that are alive and defined at each time point.
+#'
+#' @param x A `flux_forecast`.
+#' @param vars Character vector of state/derived variable names. Defaults to all
+#'   variables stored in the forecast object.
+#' @param times Numeric vector of times at which to summarize. Defaults to
+#'   `x$times`.
+#' @param categorical_max_levels Maximum number of categorical levels allowed for
+#'   a single variable.
+#' @param by Grouping level for summaries:
+#'   `"run"` pools all eligible runs (default), `"entity"` summarizes within
+#'   each `entity_id`, and `"entity_param_draw"` summarizes within each
+#'   `(entity_id, param_draw_id)`.
+#'
+#' @return A named list with one element per variable. Each element is a
+#'   `data.frame`.
+#' @details
+#' Eligibility is evaluated at each time point using the forecast object's
+#' `alive` matrix: `!is.na(alive) & alive == TRUE`.
+#' @export
 state_summary <- function(
   x,
   vars = NULL,
@@ -155,8 +178,13 @@ out <- stats::setNames(vector("list", length(vars)), vars)
     # Determine type (declared in schema; no inference).
     spec <- x$meta$schema[[v]]
     vtype <- as.character(spec$type)
-    is_cat <- vtype %in% c("binary", "categorical", "ordinal")
-    is_cont <- vtype %in% c("continuous", "count")
+    is_cat <- vtype %in% c("binary", "categorical", "ordinal", "logical")
+    is_cont <- vtype %in% c(
+      "numeric", "nonnegative_numeric", "positive_numeric",
+      "probability", "percent",
+      "integer", "count", "nonnegative_integer", "positive_integer",
+      "continuous"  # legacy alias; fluxCore normalises to "numeric" at schema validation
+    )
 
     if (is_cont) {
       # Continuous / count: per-time summaries (by='run' only; other groupings
