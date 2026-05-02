@@ -85,3 +85,14 @@ Practical defaults:
 - If you must support cohorts, parallelize across entities first (coarser tasks), then across simulations only if needed.
 
 A useful pattern for APIs: run a small forecast quickly for the response, and queue a larger job (bigger `S`, richer outputs) asynchronously for “download later”.
+---
+
+## Development
+
+`man/` and `NAMESPACE` are **generated** — do not edit them by hand.
+
+To regenerate after changing roxygen comments in `R/`:
+
+```r
+roxygen2::roxygenise(".")
+```

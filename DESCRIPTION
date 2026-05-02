@@ -1,7 +1,7 @@
 Package: fluxForecast
 Type: Package
 Title: Forecasting and Validation Tools for fluxCore Simulations
-Version: 1.10.1
+Version: 1.11.0
 Author: Jarrod Dalton [aut, cre]
 Maintainer: Jarrod Dalton <daltonj@ccf.org>
 Authors@R: person(given = "Jarrod",

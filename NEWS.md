@@ -1,3 +1,15 @@
+## fluxForecast 1.11.0
+
+- Migrated documentation from manual `.Rd` files to inline roxygen2 comments.
+  `man/` and `NAMESPACE` are now generated artifacts; do not edit by hand.
+- Fixed `state_summary()` type dispatch to cover all numeric types introduced in
+  the fluxCore 1.10.x type expansion (`numeric`, `nonnegative_numeric`,
+  `positive_numeric`, `probability`, `percent`, `integer`, `count`, etc.).
+  Previously, variables using any of these types returned `NULL` from
+  `state_summary()` instead of the expected summary data frame.
+- Fixed test fixtures: transition functions that returned out-of-schema
+  categorical values now declare those values in the schema `levels`.
+
 ## 1.10.1
 
 - `validate_forecast()` now delegates schema validation to `fluxCore::schema_validate()` — single source of truth. Removed the inline duplicated `allowed_types` list and per-var `$levels` re-check. Future fluxCore type additions/removals propagate automatically.
