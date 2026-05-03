@@ -40,14 +40,14 @@ event_prob <- function(
   if (is.null(times)) {
     times <- x$times
   } else {
-    times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = x$meta$time_spec)))
+    times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", time_spec = x$meta$time_spec)))
     if (!all(times %in% x$times)) stop("All times must be members of x$times.", call. = FALSE)
   }
 
   if (is.null(start_time)) {
     start_time <- x$time0
   }
-  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx, time_spec = x$meta$time_spec)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", time_spec = x$meta$time_spec)
   if (!is.finite(start_time) || length(start_time) != 1L) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% x$times) stop("start_time must be one of x$times (v1 restriction).", call. = FALSE)
 

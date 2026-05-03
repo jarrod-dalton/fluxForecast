@@ -127,11 +127,11 @@ event_prob_forecast <- function(
   by <- match.arg(by)
   if (inherits(entities, "Entity")) entities <- list(p1 = entities)
   if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
-  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = engine$time_spec)))
+  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", time_spec = engine$time_spec)))
   if (length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
 
   if (is.null(start_time)) start_time <- min(times)
-  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx, time_spec = engine$time_spec)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", time_spec = engine$time_spec)
   if (length(start_time) != 1L || !is.finite(start_time)) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% times) stop("start_time must be one of times (v1 restriction).", call. = FALSE)
 
@@ -422,11 +422,11 @@ state_summary_forecast <- function(
   if (inherits(entities, "Entity")) entities <- list(p1 = entities)
   if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
 
-  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = engine$time_spec)))
+  times <- sort(unique(.fluxf_as_numeric_time(times, name = "times", time_spec = engine$time_spec)))
   if (length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
 
   if (is.null(start_time)) start_time <- min(times)
-  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", ctx = ctx, time_spec = engine$time_spec)
+  start_time <- .fluxf_as_numeric_time(start_time, name = "start_time", time_spec = engine$time_spec)
   if (length(start_time) != 1L || !is.finite(start_time)) stop("start_time must be a finite numeric scalar.", call. = FALSE)
   if (!start_time %in% times) stop("start_time must be one of times (v1 restriction).", call. = FALSE)
 
