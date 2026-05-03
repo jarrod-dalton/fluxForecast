@@ -60,7 +60,7 @@ forecast <- function(
   if (inherits(entities, "Entity")) entities <- list(p1 = entities)
   if (!is.list(entities) || length(entities) == 0L) stop("entities must be a non-empty list of Entity objects.", call. = FALSE)
 
-  times <- .fluxf_as_numeric_time(times, name = "times", ctx = ctx, time_spec = engine$time_spec)
+  times <- .fluxf_as_numeric_time(times, name = "times", time_spec = engine$time_spec)
   if (!is.numeric(times) || length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
   times <- sort(unique(times))
 

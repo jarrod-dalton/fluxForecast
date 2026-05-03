@@ -1,27 +1,13 @@
-# ------------------------------------------------------------------------------
-# Numeric model-time validation helpers
-# ------------------------------------------------------------------------------
-
-.fluxf_time_unit_label <- function(ctx = NULL, time_spec = NULL) {
-  if (!is.null(time_spec) && inherits(time_spec, "time_spec")) {
-    return(as.character(time_spec$unit))
-  }
-  # Forecast uses model-time numeric. Units are a modeling convention declared in ctx$time$unit.
-  if (!is.null(ctx) && is.list(ctx)) {
-    if (!is.null(ctx$time) && is.list(ctx$time)) {
-      u <- ctx$time$unit
-      if (is.character(u) && length(u) == 1L && nzchar(u)) return(as.character(u))
-    }
-    # ctx may be a list of per-draw ctx lists
-    if (length(ctx) > 0L && all(vapply(ctx, is.list, logical(1)))) {
-      for (i in seq_along(ctx)) {
-        u <- tryCatch(.fluxf_time_unit_label(ctx[[i]], time_spec = NULL), error = function(e) NULL)
-        if (!is.null(u) && !identical(u, "unitless")) return(u)
-      }
-    }
-  }
-  "unitless"
-}
+# DEPRECATED v1.x helpers (scheduled for removal; use time_spec instead):
+#   .fluxf_ctx_is_per_draw, .fluxf_ctx_for_draw
+#
+# These helpers are retained temporarily for back-compat with code that still uses
+# v1.x ctx patterns. They will be removed in a future release.
+#
+# For new code: use formal time_spec, ParamContext, and SimContext instead.
+#
+# v2.0 migration: Replace ctx-based param passing with ParamContext lists;
+# replace per-draw ctx extraction with ParamContext indexing.
 
 .fluxf_ctx_is_per_draw <- function(ctx) {
   if (is.null(ctx) || !is.list(ctx) || length(ctx) == 0L) return(FALSE)
@@ -44,9 +30,14 @@
   ctx[[param_draw_id]]
 }
 
-.fluxf_as_numeric_time <- function(x, name = "time", ctx = NULL, time_spec = NULL) {
+# v2.0 time validation: time_spec is required; ctx fallback removed.
+.fluxf_as_numeric_time <- function(x, name = "time", time_spec = NULL) {
   if (inherits(x, "Date") || inherits(x, c("POSIXct", "POSIXt"))) {
-    unit <- .fluxf_time_unit_label(ctx, time_spec = time_spec)
+    unit <- if (!is.null(time_spec) && inherits(time_spec, "time_spec")) {
+      as.character(time_spec$unit)
+    } else {
+      "unitless"
+    }
     stop(
       sprintf(
         "%s must be numeric model time (unit: '%s'). Calendar time inputs are out of scope for fluxForecast.",
@@ -56,16 +47,23 @@
     )
   }
 
-  # Keep legacy convenience: allow coercible numerics, but disallow NA introduction.
   if (is.numeric(x)) return(as.numeric(x))
 
   y <- suppressWarnings(as.numeric(x))
   if (length(y) != length(x)) {
-    unit <- .fluxf_time_unit_label(ctx, time_spec = time_spec)
+    unit <- if (!is.null(time_spec) && inherits(time_spec, "time_spec")) {
+      as.character(time_spec$unit)
+    } else {
+      "unitless"
+    }
     stop(sprintf("%s must be numeric model time (unit: '%s').", name, unit), call. = FALSE)
   }
   if (any(is.na(y) & !is.na(x))) {
-    unit <- .fluxf_time_unit_label(ctx, time_spec = time_spec)
+    unit <- if (!is.null(time_spec) && inherits(time_spec, "time_spec")) {
+      as.character(time_spec$unit)
+    } else {
+      "unitless"
+    }
     stop(sprintf("%s must be numeric model time (unit: '%s').", name, unit), call. = FALSE)
   }
   y
