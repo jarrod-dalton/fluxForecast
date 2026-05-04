@@ -64,6 +64,15 @@ forecast <- function(
   if (!is.numeric(times) || length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
   times <- sort(unique(times))
 
+  # Guard: ctx$time is a v1.x pattern and must not be used to override canonical time spec.
+  if (!is.null(ctx) && is.list(ctx) && !is.null(ctx$time)) {
+    stop(
+      "forecast(): cannot override canonical model time spec via ctx$time. ",
+      "The time spec is fixed by the engine's bundle$time_spec.",
+      call. = FALSE
+    )
+  }
+
   S <- as.integer(S)
   if (!is.finite(S) || S < 1L) stop("S must be a positive integer.", call. = FALSE)
 
