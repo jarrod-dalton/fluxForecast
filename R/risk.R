@@ -230,7 +230,6 @@ ft_event <- first_time_any(event)
         res <- do.call(rbind, rows)
         rownames(res) <- NULL
       }
-  res$risk <- res$event_prob
 
   cohort <- list(
     eligible_run_ids = eligible_run_ids,

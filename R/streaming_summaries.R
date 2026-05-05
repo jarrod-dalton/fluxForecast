@@ -340,7 +340,6 @@ event_prob_forecast <- function(
       outk
     }
   }
-  res$risk <- res$event_prob
 
   spec <- list(
     event = event,
