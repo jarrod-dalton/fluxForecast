@@ -9,8 +9,12 @@
 #'
 #' @param x A `flux_forecast`.
 #' @param event Character vector of event types of interest.
-#' @param by Grouping level for summaries. See `state_summary` for definitions.
-#'   Default is `"run"`.
+#' @param by Grouping level for summaries. `"run"` pools all entity-run pairs
+#'   (treats each pair as independent). `"sim"` computes the event probability
+#'   across entities within each simulation replicate, then averages over
+#'   replicates — the correct approach for a repeated-simulation cohort study.
+#'   `"entity"` returns one curve per entity. `"entity_param_draw"` returns one
+#'   curve per entity-by-parameter-draw combination.
 #' @param times Optional subset of forecast times.
 #' @param start_time Time in the forecast grid used to define the eligible cohort.
 #' @param terminal_events Optional event types that must be absent by `start_time`.
@@ -23,7 +27,7 @@
 event_prob <- function(
   x,
   event,
-  by = c("run", "entity", "entity_param_draw"),
+  by = c("run", "sim", "entity", "entity_param_draw"),
   times = NULL,
   start_time = NULL,
   terminal_events = NULL,
@@ -135,6 +139,7 @@ eligible_run_ids <- which(elig)
       group_cols <- switch(
         by,
         run = character(0),
+        sim = character(0),
         entity = "entity_id",
         entity_param_draw = c("entity_id", "param_draw_id")
       )
@@ -154,7 +159,38 @@ eligible_run_ids <- which(elig)
     # reorder so group cols come first
     res <- res[, c(group_cols, "time", "n_eligible", "n_events", "event_prob"), drop = FALSE]
   }
-} else if (length(group_cols) == 0) {
+} else if (by == "sim") {
+      if (!"sim_id" %in% names(x$run_index)) {
+        stop("by='sim' requires flux_forecast$run_index to contain a 'sim_id' column.", call. = FALSE)
+      }
+      ft_event <- first_time_any(event)
+      idx_elig <- x$run_index[eligible_run_ids, , drop = FALSE]
+      sim_levels <- sort(unique(idx_elig$sim_id))
+
+      per_sim <- lapply(sim_levels, function(s) {
+        pos <- which(idx_elig$sim_id == s)
+        ft_s <- ft_event[eligible_run_ids[pos]]
+        n_elig_s <- length(pos)
+        n_ev_s <- vapply(times, function(t) {
+          leq <- ft_s <= t
+          leq[is.na(leq)] <- FALSE
+          sum(leq)
+        }, integer(1))
+        list(n_elig = n_elig_s, n_ev = n_ev_s, ep = n_ev_s / n_elig_s)
+      })
+
+      ep_mat <- do.call(rbind, lapply(per_sim, function(x) x$ep))  # [n_sims x n_times]
+      n_ev_mat <- do.call(rbind, lapply(per_sim, function(x) x$n_ev))
+      n_elig_per_sim <- vapply(per_sim, function(x) x$n_elig, integer(1))
+
+      res <- data.frame(
+        time       = times,
+        n_eligible = as.integer(round(mean(n_elig_per_sim))),
+        n_events   = as.integer(round(colMeans(n_ev_mat))),
+        event_prob = colMeans(ep_mat)
+      )
+      rownames(res) <- NULL
+      } else if (length(group_cols) == 0) {
 ft_event <- first_time_any(event)
     n_events <- vapply(
       times,
