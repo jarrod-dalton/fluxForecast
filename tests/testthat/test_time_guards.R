@@ -5,18 +5,18 @@ library(fluxForecast)
 test_that("forecast rejects calendar-time inputs", {
   bundle <- list(
     time_spec = fluxCore::time_spec(unit = "days"),
-    propose_events = function(entity, ctx, ...) {
+    propose_events = function(entity, ...) {
       if (entity$last_time < 1) {
         return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
       }
       list()
     },
-    transition = function(entity, event, ctx) list(),
-    stop = function(entity, event, ctx) TRUE,
+    transition = function(entity, event) list(),
+    stop = function(entity, event) TRUE,
     refresh_rules = function(...) "ALL"
   )
 
-  engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
+  engine <- Engine$new(bundle = bundle)
   p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
 
   expect_error(
@@ -29,18 +29,18 @@ test_that("forecast rejects calendar-time inputs", {
 test_that("event_prob/draws reject calendar-time inputs", {
   bundle <- list(
     time_spec = fluxCore::time_spec(unit = "days"),
-    propose_events = function(entity, ctx, ...) {
+    propose_events = function(entity, ...) {
       if (entity$last_time < 1) {
         return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
       }
       list()
     },
-    transition = function(entity, event, ctx) list(),
-    stop = function(entity, event, ctx) TRUE,
+    transition = function(entity, event) list(),
+    stop = function(entity, event) TRUE,
     refresh_rules = function(...) "ALL"
   )
 
-  engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
+  engine <- Engine$new(bundle = bundle)
   p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
 
   fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object")
@@ -58,21 +58,21 @@ test_that("event_prob/draws reject calendar-time inputs", {
   )
 })
 
-test_that("forecast errors when runtime ctx attempts to override canonical time spec", {
+test_that("forecast does not accept ctx= parameter (removed in v2.0)", {
   bundle <- list(
     time_spec = fluxCore::time_spec(unit = "years"),
-    propose_events = function(entity, ctx, ...) {
+    propose_events = function(entity, ...) {
       if (entity$last_time < 1) {
         return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
       }
       list()
     },
-    transition = function(entity, event, ctx) list(),
-    stop = function(entity, event, ctx) TRUE,
+    transition = function(entity, event) list(),
+    stop = function(entity, event) TRUE,
     refresh_rules = function(...) "ALL"
   )
 
-  engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
+  engine <- Engine$new(bundle = bundle)
   p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
 
   expect_error(
@@ -85,25 +85,25 @@ test_that("forecast errors when runtime ctx attempts to override canonical time 
       return = "none",
       ctx = list(time = list(unit = "days"))
     ),
-    "override canonical model time spec"
+    "unused argument"
   )
 })
 
 test_that("event_prob uses canonical model unit label in calendar-time guard message", {
   bundle <- list(
     time_spec = fluxCore::time_spec(unit = "hours"),
-    propose_events = function(entity, ctx, ...) {
+    propose_events = function(entity, ...) {
       if (entity$last_time < 1) {
         return(list(visit = list(time_next = entity$last_time + 1, event_type = "visit")))
       }
       list()
     },
-    transition = function(entity, event, ctx) list(),
-    stop = function(entity, event, ctx) TRUE,
+    transition = function(entity, event) list(),
+    stop = function(entity, event) TRUE,
     refresh_rules = function(...) "ALL"
   )
 
-  engine <- Engine$new(provider = list(load = function(model_spec, ...) bundle))
+  engine <- Engine$new(bundle = bundle)
   p <- fluxCore::Entity$new(init = list(alive = TRUE), schema = test_entity_schema(), time0 = 0)
   fx <- forecast(engine = engine, entities = list(p1 = p), times = c(0, 1), S = 1, backend = "none", return = "object")
 

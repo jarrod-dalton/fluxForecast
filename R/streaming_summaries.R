@@ -10,7 +10,7 @@
 #   bundle$terminal_events when declared; otherwise lifecycle is active where defined.
 # - Optional event-free conditioning by start_time (terminal_events,
 #   condition_on_events).
-# - Optional eligible(snapshot, time, ctx) predicate evaluated at start_time.
+# - Optional eligible(snapshot, time) predicate evaluated at start_time.
 # ------------------------------------------------------------------------------
 
 .build_run_grid <- function(n_entities, n_param_sets, S) {
@@ -41,8 +41,7 @@
   model_terminal_events,
   terminal_events,
   condition_on_events,
-  eligible,
-  ctx
+  eligible
 ) {
   # Must be defined at start_time
   if (entity$last_time < start_time) return(FALSE)
@@ -70,7 +69,7 @@
 
   if (!is.null(eligible)) {
     if (!is.function(eligible)) stop("eligible must be a function if provided.", call. = FALSE)
-    out <- eligible(snap, start_time, ctx)
+    out <- eligible(snap, start_time)
     return(identical(out, TRUE))
   }
 
@@ -94,9 +93,8 @@
 #' @param terminal_events Optional event types that must be absent by `start_time`.
 #' @param condition_on_events Optional event types that must be absent by
 #'   `start_time`.
-#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE,
+#' @param eligible Optional function(snapshot, time) -> TRUE/FALSE,
 #'   evaluated at `start_time`.
-#' @param ctx Optional list passed to `eligible()`.
 #' @param max_events Maximum events per run.
 #' @param seed Optional base seed.
 #' @param backend Parallel backend. One of `c("none", "mclapply", "future")`.
@@ -117,7 +115,6 @@ event_prob_forecast <- function(
   terminal_events = NULL,
   condition_on_events = NULL,
   eligible = NULL,
-  ctx = NULL,
   max_events = 1000,
   seed = NULL,
   backend = c("none", "mclapply", "future"),
@@ -192,16 +189,14 @@ event_prob_forecast <- function(
     p0 <- entities[[pid]]
     p <- p0$clone(deep = TRUE)
 
-    ctx_base <- .fluxf_ctx_for_draw(ctx, param_draw_id = did, n_param_sets = P)
-    ctx_run <- if (is.null(ctx_base)) list() else ctx_base
-    ctx_run$params <- param_sets[[did]]
-
-    out <- engine$run(
+    out <- engine$run_draw(
       entity = p,
+      params = param_sets[[did]],
+      draw_id = did,
+      sim_id = row$sim_id,
       max_events = max_events,
       max_time = horizon,
-      return_observations = FALSE,
-      ctx = ctx_run
+      return_observations = FALSE
     )
 
     ev <- out$events
@@ -214,8 +209,7 @@ event_prob_forecast <- function(
       model_terminal_events = model_terminal_events,
       terminal_events = terminal_events,
       condition_on_events = condition_on_events,
-      eligible = eligible,
-      ctx = ctx_run
+      eligible = eligible
     )
 
     if (!is_true1(eligible0)) {
@@ -384,9 +378,8 @@ event_prob_forecast <- function(
 #'   `start_time`.
 #' @param condition_on_events Optional event types that must be absent by
 #'   `start_time`.
-#' @param eligible Optional function(snapshot, time, ctx) -> TRUE/FALSE
+#' @param eligible Optional function(snapshot, time) -> TRUE/FALSE
 #'   evaluated at `start_time`.
-#' @param ctx Optional list passed to `eligible()`.
 #' @param max_events Maximum events per run.
 #' @param seed Optional base seed.
 #' @param backend Parallel backend. One of `c("none", "mclapply", "future")`.
@@ -408,7 +401,6 @@ state_summary_forecast <- function(
   terminal_events = NULL,
   condition_on_events = NULL,
   eligible = NULL,
-  ctx = NULL,
   max_events = 1000,
   seed = NULL,
   backend = c("none", "mclapply", "future"),
@@ -494,16 +486,14 @@ state_summary_forecast <- function(
     p0 <- entities[[pid]]
     p <- p0$clone(deep = TRUE)
 
-    ctx_base <- .fluxf_ctx_for_draw(ctx, param_draw_id = did, n_param_sets = P)
-    ctx_run <- if (is.null(ctx_base)) list() else ctx_base
-    ctx_run$params <- param_sets[[did]]
-
-    out <- engine$run(
+    out <- engine$run_draw(
       entity = p,
+      params = param_sets[[did]],
+      draw_id = did,
+      sim_id = row$sim_id,
       max_events = max_events,
       max_time = horizon,
-      return_observations = FALSE,
-      ctx = ctx_run
+      return_observations = FALSE
     )
 
     ev <- out$events
@@ -516,8 +506,7 @@ state_summary_forecast <- function(
       model_terminal_events = model_terminal_events,
       terminal_events = terminal_events,
       condition_on_events = condition_on_events,
-      eligible = eligible,
-      ctx = ctx_run
+      eligible = eligible
     )
 
     if (!is_true1(eligible0)) return(NULL)

@@ -15,9 +15,8 @@
 #' @param start_time Time in the forecast grid used to define the eligible cohort.
 #' @param terminal_events Optional event types that must be absent by `start_time`.
 #' @param condition_on_events Optional event types that must be absent by `start_time`.
-#' @param eligible Optional function `f(snapshot, time, ctx)` returning TRUE/FALSE.
+#' @param eligible Optional function `f(snapshot, time)` returning TRUE/FALSE.
 #'   Evaluated at `start_time` only.
-#' @param ctx Optional list passed to `eligible`.
 #'
 #' @return A `flux_event_prob` object.
 #' @export
@@ -29,8 +28,7 @@ event_prob <- function(
   start_time = NULL,
   terminal_events = NULL,
   condition_on_events = NULL,
-  eligible = NULL,
-  ctx = NULL
+  eligible = NULL
 ) {
   if (!inherits(x, "flux_forecast")) stop("x must be a flux_forecast.", call. = FALSE)
 
@@ -110,7 +108,7 @@ event_prob <- function(
         i <- keep[[k]]
         snap <- lapply(x$vars, function(v) x$state[[v]][i, t_start_idx])
         names(snap) <- x$vars
-        out <- eligible(snap, start_time, ctx)
+        out <- eligible(snap, start_time)
         ok[[k]] <- identical(out, TRUE)
       }
       elig[keep] <- ok

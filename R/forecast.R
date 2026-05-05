@@ -29,10 +29,6 @@
 #'   `return = "summary_stats"`. For `summary_stats = "event_prob"` this is
 #'   passed to `event_prob_forecast()`. For `summary_stats = "state"` this is
 #'   passed to `state_summary_forecast()`.
-#' @param ctx Optional simulation context. Either a single list merged into each
-#'   run ctx, or a list of per-parameter-set ctx lists. Each per-draw ctx may
-#'   include its own `$params`; if so, that overrides `param_sets`.
-#'
 #' @return A `flux_forecast` object when `return = "object"`.
 #' @export
 forecast <- function(
@@ -48,8 +44,7 @@ forecast <- function(
   n_workers = NULL,
   return = c("object", "summary_stats", "none"),
   summary_stats = c("both", "event_prob", "state"),
-  summary_spec = NULL,
-  ctx = NULL
+  summary_spec = NULL
 ) {
   backend <- match.arg(backend)
   return <- match.arg(return)
@@ -64,14 +59,7 @@ forecast <- function(
   if (!is.numeric(times) || length(times) < 1L || any(!is.finite(times))) stop("times must be a non-empty numeric vector.", call. = FALSE)
   times <- sort(unique(times))
 
-  # Guard: ctx$time is a v1.x pattern and must not be used to override canonical time spec.
-  if (!is.null(ctx) && is.list(ctx) && !is.null(ctx$time)) {
-    stop(
-      "forecast(): cannot override canonical model time spec via ctx$time. ",
-      "The time spec is fixed by the engine's bundle$time_spec.",
-      call. = FALSE
-    )
-  }
+
 
   S <- as.integer(S)
   if (!is.finite(S) || S < 1L) stop("S must be a positive integer.", call. = FALSE)
@@ -148,7 +136,6 @@ forecast <- function(
     n_param_draws = P,
     n_sims = S,
     param_draws = param_sets,
-    ctx = ctx,
     max_events = max_events,
     max_time = horizon,
     return_observations = FALSE,
@@ -279,7 +266,6 @@ forecast <- function(
     entity_levels = entity_levels,
     entity_tags = entity_tags,
     schema = schema0,
-    ctx = ctx,
     time_spec = engine$time_spec,
     seed = seed,
     S = S,

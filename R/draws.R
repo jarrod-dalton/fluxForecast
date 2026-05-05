@@ -11,9 +11,8 @@
 #' @param times Optional subset of forecast times.
 #' @param start_time Start time used to define a fixed cohort when
 #'   `cohort = "fixed"`.
-#' @param eligible Optional function `f(snapshot, time, ctx)` evaluated at
+#' @param eligible Optional function `f(snapshot, time)` evaluated at
 #'   `start_time` only.
-#' @param ctx Optional list passed to `eligible`.
 #' @param cohort `"timepoint"` or `"fixed"`.
 #'
 #' @return A data.frame when a single variable is requested; otherwise a named
@@ -25,7 +24,6 @@ draws <- function(
   times = NULL,
   start_time = NULL,
   eligible = NULL,
-  ctx = NULL,
   cohort = c("timepoint", "fixed")
 ) {
   if (!inherits(x, "flux_forecast")) stop("x must be a flux_forecast.", call. = FALSE)
@@ -67,7 +65,7 @@ draws <- function(
           i <- keep[[k]]
           snap <- lapply(x$vars, function(v) x$state[[v]][i, t_start_idx])
           names(snap) <- x$vars
-          out <- eligible(snap, start_time, ctx)
+          out <- eligible(snap, start_time)
           ok[[k]] <- identical(out, TRUE)
         }
         elig[keep] <- ok

@@ -1,4 +1,4 @@
-test_that("state_summary quantiles pool correctly across multiple ctx (parameter sets)", {
+test_that("state_summary quantiles pool correctly across multiple parameter sets", {
   skip_if_not_installed("fluxCore")
 
   times <- c(0, 1, 2)
@@ -16,15 +16,14 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
 
 
   # Deterministic tick process:
-  # - At each tick time t in ctx$times, set x <- shift + t.
+  # - At each tick time t in param_ctx$params$times, set x <- shift + t.
   # - alive remains TRUE throughout.
   toy_bundle <- list(
     time_spec = fluxCore::time_spec(unit = "days"),
-    propose_events = function(entity, ctx = NULL, process_ids = NULL, current_proposals = NULL) {
+    propose_events = function(entity, param_ctx = NULL, process_ids = NULL, current_proposals = NULL) {
       pid <- "tick"
       if (!is.null(process_ids) && !(pid %in% process_ids)) return(list())
-      if (is.null(ctx) || is.null(ctx$times)) stop("ctx$times is required for this test")
-      tt <- sort(as.numeric(ctx$times))
+      tt <- sort(as.numeric(param_ctx$params$times))
 
       # We want a tick at time 0 once, then strictly increasing thereafter.
       if (entity$last_j == 0L) {
@@ -37,16 +36,15 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
 
       list(tick = list(time_next = t_next, event_type = "TICK", process_id = pid))
     },
-    transition = function(entity, event, ctx = NULL) {
-      if (is.null(ctx) || is.null(ctx$params) || is.null(ctx$params$shift)) stop("ctx$params$shift required")
+    transition = function(entity, event, param_ctx = NULL) {
       if (!identical(event$event_type, "TICK")) return(NULL)
       list(
-        x = as.numeric(ctx$params$shift) + as.numeric(event$time_next),
+        x = as.numeric(param_ctx$params$shift) + as.numeric(event$time_next),
         alive = TRUE,
         active_followup = TRUE
       )
     },
-    stop = function(entity, event, ctx = NULL) {
+    stop = function(entity, event) {
       FALSE
     }
   )
@@ -59,10 +57,10 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
 
   # Five parameter sets, one run each. Using 5 ensures type=7 quantiles land exactly on order stats
   # for probs {0.25, 0.5, 0.75}.
-  ctx_list <- lapply(0:4, function(s) list(times = times, params = list(shift = s)))
+  # Each param_set carries both the shift value AND the evaluation times.
+  param_sets <- lapply(0:4, function(s) list(shift = s, times = times))
 
-  provider <- list(load = function(model_spec, ...) toy_bundle)
-  engine <- fluxCore::Engine$new(provider = provider)
+  engine <- fluxCore::Engine$new(bundle = toy_bundle)
 
   x <- forecast(
     engine = engine,
@@ -70,10 +68,7 @@ test_that("state_summary quantiles pool correctly across multiple ctx (parameter
     times = times,
     vars = c("x", "alive", "active_followup"),
     S = 1,
-        # Five parameter sets, one draw each. We keep param_sets empty here and encode
-    # the deterministic shift inside ctx so we can test pooling across ctx.
-    param_sets = replicate(5, list(), simplify = FALSE),
-    ctx = ctx_list,
+    param_sets = param_sets,
     backend = "none",
     return = "object",
     seed = 123

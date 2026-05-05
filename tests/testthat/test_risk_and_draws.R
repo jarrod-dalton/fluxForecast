@@ -3,7 +3,7 @@ library(fluxCore)
 library(fluxForecast)
 
 make_toy_bundle <- function() {
-  propose_events <- function(entity, ctx, ...) {
+  propose_events <- function(entity, ...) {
     phase <- entity$state()[["phase"]]
     alive <- entity$state()[["alive"]]
     props <- list()
@@ -26,7 +26,7 @@ make_toy_bundle <- function() {
     props
   }
 
-  transition <- function(entity, event, ctx) {
+  transition <- function(entity, event) {
     et <- event$event_type
     if (et == "visit") {
       x <- entity$state()[["x"]]
@@ -41,7 +41,7 @@ make_toy_bundle <- function() {
     NULL
   }
 
-  stop <- function(entity, event, ctx) {
+  stop <- function(entity, event) {
     if (!isTRUE(entity$state()[["alive"]])) return(TRUE)
     if (entity$last_time >= 6) return(TRUE)
     FALSE
@@ -64,8 +64,7 @@ test_that("forecast -> event_prob() and survival() behave as expected", {
   p <- fluxCore::Entity$new(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_toy_bundle()
-  provider <- list(load = function(model_spec, ...) bundle)
-  engine <- Engine$new(provider = provider)
+  engine <- Engine$new(bundle = bundle)
 
   fx <- forecast(
     engine = engine,
@@ -87,7 +86,7 @@ test_that("forecast -> event_prob() and survival() behave as expected", {
   expect_equal(s_death$result$event_free[s_death$result$time == 6], 0)
 
   # eligibility: waitlist at start_time (should include all)
-  elig_wait <- function(snap, time, ctx) isTRUE(as.logical(snap$alive)) && identical(as.character(snap$phase), "waitlist")
+  elig_wait <- function(snap, time) isTRUE(as.logical(snap$alive)) && identical(as.character(snap$phase), "waitlist")
   r_tx2 <- event_prob(fx, event = "transplant", start_time = 0, eligible = elig_wait)
   expect_equal(r_tx2$result$event_prob[r_tx2$result$time == 3], 1)
 })
@@ -103,8 +102,7 @@ test_that("draws() returns a data.frame and respects times", {
   p <- fluxCore::Entity$new(init = list(alive = TRUE, phase = "waitlist", x = 0), schema = schema, time0 = 0)
 
   bundle <- make_toy_bundle()
-  provider <- list(load = function(model_spec, ...) bundle)
-  engine <- Engine$new(provider = provider)
+  engine <- Engine$new(bundle = bundle)
 
   fx <- forecast(
     engine = engine,

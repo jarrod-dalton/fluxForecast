@@ -3,7 +3,7 @@ library(fluxCore)
 library(fluxForecast)
 
 make_stop_bundle <- function() {
-  propose_events <- function(entity, ctx, ...) {
+  propose_events <- function(entity, ...) {
     phase <- entity$state()[["phase"]]
     alive <- entity$state()[["alive"]]
     props <- list()
@@ -21,7 +21,7 @@ make_stop_bundle <- function() {
     props
   }
 
-  transition <- function(entity, event, ctx) {
+  transition <- function(entity, event) {
     et <- event$event_type
     if (et == "visit") {
       x <- entity$state()[["x"]]
@@ -35,7 +35,7 @@ make_stop_bundle <- function() {
     NULL
   }
 
-  stop <- function(entity, event, ctx) {
+  stop <- function(entity, event) {
     # Stop follow-up at transplant (non-death).
     if (!is.null(event) && identical(event$event_type, "transplant")) return(TRUE)
     FALSE
@@ -61,8 +61,7 @@ test_that("follow-up can stop without implying death (alive vs defined)", {
   )
 
   bundle <- make_stop_bundle()
-  provider <- list(load = function(model_spec, ...) bundle)
-  engine <- Engine$new(provider = provider)
+  engine <- Engine$new(bundle = bundle)
 
   times <- c(0, 1, 2, 3)
 

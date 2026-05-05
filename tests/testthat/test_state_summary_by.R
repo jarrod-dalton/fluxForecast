@@ -3,7 +3,7 @@ library(fluxCore)
 library(fluxForecast)
 
 make_toy_bundle <- function() {
-  propose_events <- function(entity, ctx, ...) {
+  propose_events <- function(entity, ...) {
     props <- list()
     if (entity$last_time < 2) {
       props$visit <- list(time_next = entity$last_time + 1, event_type = "visit")
@@ -11,7 +11,7 @@ make_toy_bundle <- function() {
     props
   }
 
-  transition <- function(entity, event, ctx, ...) {
+  transition <- function(entity, event, ...) {
     if (event$event_type == "visit") {
       # no-op
       NULL
@@ -20,7 +20,7 @@ make_toy_bundle <- function() {
     }
   }
 
-  stop <- function(entity, event, ctx, ...) {
+  stop <- function(entity, event, ...) {
     entity$last_time >= 2
   }
 
@@ -42,8 +42,7 @@ test_that("state_summary supports by='entity'", {
   p2 <- fluxCore::Entity$new(init = list(alive = TRUE, phase = "waitlist", x = 10), schema = schema, time0 = 0)
 
   bundle <- make_toy_bundle()
-  provider <- list(load = function(model_spec, ...) bundle)
-  engine <- Engine$new(provider = provider)
+  engine <- Engine$new(bundle = bundle)
 
   fx <- forecast(
     engine = engine,
