@@ -1,6 +1,5 @@
 # fluxForecast
 [![Release](https://img.shields.io/github/v/release/jarrod-dalton/fluxForecast?display_name=tag)](https://github.com/jarrod-dalton/fluxForecast/releases)
-[![Downloads](https://img.shields.io/github/downloads/jarrod-dalton/fluxForecast/total)](https://github.com/jarrod-dalton/fluxForecast/releases)
 [![r-universe](https://jarrod-dalton.r-universe.dev/badges/fluxForecast)](https://jarrod-dalton.r-universe.dev/fluxForecast)
 [![License: LGPL-3](https://img.shields.io/badge/license-LGPL--3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 [![Language: R](https://img.shields.io/badge/language-R-276DC3?logo=r&logoColor=white)](https://www.r-project.org/)
@@ -12,7 +11,15 @@ This package is designed for health-services and clinical modeling teams buildin
 - Running forward simulations from an entity's current state (or snapshot)
 - Summarizing **probabilistic forecasts** over a user-supplied time grid
 - Memory-friendly “one-shot” summaries (risk curves, state summaries) that scale to large simulation jobs
+## Installation
 
+```r
+# Latest stable release (recommended):
+install.packages("fluxForecast", repos = "https://jarrod-dalton.r-universe.dev")
+
+# Pre-release install from source code:
+remotes::install_github("jarrod-dalton/fluxForecast")
+```
 ## Quick start
 
 Typical workflow:
