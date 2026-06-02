@@ -1,3 +1,9 @@
+## fluxForecast 2.0.0
+
+- Ecosystem alignment to fluxCore 2.0.0.
+- Dependency floor updated to `fluxCore (>= 2.0.0)`.
+- No functional changes to the fluxForecast API.
+
 ## fluxForecast 1.11.0
 
 - Migrated documentation from manual `.Rd` files to inline roxygen2 comments.
