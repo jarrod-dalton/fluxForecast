@@ -1,6 +1,7 @@
 # fluxForecast
 [![Release](https://img.shields.io/github/v/release/jarrod-dalton/fluxForecast?display_name=tag)](https://github.com/jarrod-dalton/fluxForecast/releases)
 [![Downloads](https://img.shields.io/github/downloads/jarrod-dalton/fluxForecast/total)](https://github.com/jarrod-dalton/fluxForecast/releases)
+[![r-universe](https://jarrod-dalton.r-universe.dev/badges/fluxForecast)](https://jarrod-dalton.r-universe.dev/fluxForecast)
 [![License: LGPL-3](https://img.shields.io/badge/license-LGPL--3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 [![Language: R](https://img.shields.io/badge/language-R-276DC3?logo=r&logoColor=white)](https://www.r-project.org/)
 
