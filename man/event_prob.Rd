@@ -7,13 +7,12 @@
 event_prob(
   x,
   event,
-  by = c("run", "entity", "entity_param_draw"),
+  by = c("run", "sim", "entity", "entity_param_draw"),
   times = NULL,
   start_time = NULL,
   terminal_events = NULL,
   condition_on_events = NULL,
-  eligible = NULL,
-  ctx = NULL
+  eligible = NULL
 )
 }
 \arguments{
@@ -21,8 +20,12 @@ event_prob(
 
 \item{event}{Character vector of event types of interest.}
 
-\item{by}{Grouping level for summaries. See \code{state_summary} for definitions.
-Default is \code{"run"}.}
+\item{by}{Grouping level for summaries. \code{"run"} pools all entity-run pairs
+(treats each pair as independent). \code{"sim"} computes the event probability
+across entities within each simulation replicate, then averages over
+replicates — the correct approach for a repeated-simulation cohort study.
+\code{"entity"} returns one curve per entity. \code{"entity_param_draw"} returns one
+curve per entity-by-parameter-draw combination.}
 
 \item{times}{Optional subset of forecast times.}
 
@@ -32,10 +35,8 @@ Default is \code{"run"}.}
 
 \item{condition_on_events}{Optional event types that must be absent by \code{start_time}.}
 
-\item{eligible}{Optional function \code{f(snapshot, time, ctx)} returning TRUE/FALSE.
+\item{eligible}{Optional function \code{f(snapshot, time)} returning TRUE/FALSE.
 Evaluated at \code{start_time} only.}
-
-\item{ctx}{Optional list passed to \code{eligible}.}
 }
 \value{
 A \code{flux_event_prob} object.

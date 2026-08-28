@@ -10,7 +10,6 @@ draws(
   times = NULL,
   start_time = NULL,
   eligible = NULL,
-  ctx = NULL,
   cohort = c("timepoint", "fixed")
 )
 }
@@ -24,10 +23,8 @@ draws(
 \item{start_time}{Start time used to define a fixed cohort when
 \code{cohort = "fixed"}.}
 
-\item{eligible}{Optional function \code{f(snapshot, time, ctx)} evaluated at
+\item{eligible}{Optional function \code{f(snapshot, time)} evaluated at
 \code{start_time} only.}
-
-\item{ctx}{Optional list passed to \code{eligible}.}
 
 \item{cohort}{\code{"timepoint"} or \code{"fixed"}.}
 }

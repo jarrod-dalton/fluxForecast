@@ -17,8 +17,7 @@ forecast(
   n_workers = NULL,
   return = c("object", "summary_stats", "none"),
   summary_stats = c("both", "event_prob", "state"),
-  summary_spec = NULL,
-  ctx = NULL
+  summary_spec = NULL
 )
 }
 \arguments{
@@ -53,10 +52,6 @@ workers via \code{future::plan()}.}
 \code{return = "summary_stats"}. For \code{summary_stats = "event_prob"} this is
 passed to \code{event_prob_forecast()}. For \code{summary_stats = "state"} this is
 passed to \code{state_summary_forecast()}.}
-
-\item{ctx}{Optional simulation context. Either a single list merged into each
-run ctx, or a list of per-parameter-set ctx lists. Each per-draw ctx may
-include its own \verb{$params}; if so, that overrides \code{param_sets}.}
 }
 \value{
 A \code{flux_forecast} object when \code{return = "object"}.

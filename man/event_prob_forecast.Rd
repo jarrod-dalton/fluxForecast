@@ -16,7 +16,6 @@ event_prob_forecast(
   terminal_events = NULL,
   condition_on_events = NULL,
   eligible = NULL,
-  ctx = NULL,
   max_events = 1000,
   seed = NULL,
   backend = c("none", "mclapply", "future"),
@@ -45,10 +44,8 @@ event_prob_forecast(
 \item{condition_on_events}{Optional event types that must be absent by
 \code{start_time}.}
 
-\item{eligible}{Optional function(snapshot, time, ctx) -> TRUE/FALSE,
+\item{eligible}{Optional function(snapshot, time) -> TRUE/FALSE,
 evaluated at \code{start_time}.}
-
-\item{ctx}{Optional list passed to \code{eligible()}.}
 
 \item{max_events}{Maximum events per run.}
 
