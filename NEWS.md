@@ -1,3 +1,12 @@
+## fluxForecast 2.1.0
+
+- Preserved the public `forecast(param_sets = ...)` list API while adapting its
+  batch call to fluxCore 2.1's typed `ParamContext` contract.
+- Forecast-level seeds now remain authoritative for both cohort forecasts and
+  memory-light streaming summaries when a loaded Engine has stored runtime
+  defaults.
+- Dependency floor updated to `fluxCore (>= 2.1.0)`.
+
 ## fluxForecast 2.0.0
 
 - Ecosystem alignment to fluxCore 2.0.0.

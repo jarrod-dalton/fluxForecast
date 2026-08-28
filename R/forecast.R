@@ -129,13 +129,20 @@ forecast <- function(
   horizon <- max(times)
 
   # Use fluxCore::run_cohort to run R = N * P * S simulations.
+  # fluxForecast keeps its established public `param_sets` API (a list of
+  # parameter payloads), while fluxCore 2.1 requires typed parameter contexts
+  # at the cohort boundary. Assign draw ids in the same order exposed by the
+  # forecast run index.
+  param_contexts <- lapply(seq_along(param_sets), function(draw_id) {
+    fluxCore::ParamContext(draw_id = draw_id, params = param_sets[[draw_id]])
+  })
 
   out <- suppressWarnings(fluxCore::run_cohort(
     engine = engine,
     entities = entities,
     n_param_draws = P,
     n_sims = S,
-    param_draws = param_sets,
+    param_draws = param_contexts,
     max_events = max_events,
     max_time = horizon,
     return_observations = FALSE,
