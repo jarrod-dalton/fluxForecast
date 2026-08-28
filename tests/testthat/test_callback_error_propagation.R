@@ -1,5 +1,12 @@
-test_that("forecast warning suppression does not hide model callback errors", {
+test_that("forecast batch execution does not hide decision callback errors", {
   model_time <- fluxCore::time_spec(unit = "hours")
+  dispatch_review <- fluxCore::DecisionPoint(
+    id = "dispatch_review",
+    trigger = "delivery",
+    condition = function(entity) {
+      stop("forecast decision condition sentinel", call. = FALSE)
+    }
+  )
   schema <- fluxCore::set_schema(
     vars = list(
       alive = list(
@@ -16,7 +23,8 @@ test_that("forecast warning suppression does not hide model callback errors", {
         default = 0L
       )
     ),
-    time_spec = model_time
+    time_spec = model_time,
+    decision_points = list(dispatch_review)
   )
   bundle <- list(
     time_spec = model_time,
@@ -25,7 +33,7 @@ test_that("forecast warning suppression does not hide model callback errors", {
       list(delivery = list(time_next = 1, event_type = "delivery"))
     },
     transition = function(entity, event) {
-      stop("forecast transition sentinel", call. = FALSE)
+      list(deliveries = entity$current$deliveries + 1L)
     },
     stop = function(entity, event) TRUE
   )
@@ -46,7 +54,7 @@ test_that("forecast warning suppression does not hide model callback errors", {
       seed = 11L,
       backend = "none"
     ),
-    "forecast transition sentinel",
+    "DecisionPoint('dispatch_review') condition callback errored: forecast decision condition sentinel",
     fixed = TRUE
   )
 })
