@@ -66,7 +66,7 @@ out <- forecast(
 This currently supports:
 
 - `backend = "none"`: serial
-- `backend = "cluster"`: PSOCK cluster via `fluxCore::run_cohort(parallel=TRUE)`
+- `backend = "cluster"`: PSOCK cluster via `fluxCore::run_cohort(backend = "cluster")`
 
 For large-scale parallel work, prefer the memory-light summary paths above.
 
@@ -86,7 +86,9 @@ Practical defaults:
   future::plan(future::multisession, workers = 4)
   ```
 
-- If your model has expensive pieces (e.g., large table lookups), preload them in `ctx` or bundle state so they are not rebuilt each run.
+- If your model has expensive pieces (e.g., large table lookups), prepare them
+  once outside the callbacks and reference them from the bundle so they are not
+  rebuilt each run.
 - If you must support cohorts, parallelize across entities first (coarser tasks), then across simulations only if needed.
 
 A useful pattern for APIs: run a small forecast quickly for the response, and queue a larger job (bigger `S`, richer outputs) asynchronously for “download later”.
