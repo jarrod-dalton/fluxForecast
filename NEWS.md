@@ -5,9 +5,9 @@
 - Forecast-level seeds now remain authoritative for both cohort forecasts and
   memory-light streaming summaries when a loaded Engine has stored runtime
   defaults.
-- Forecast's cohort wrapper preserves fluxCore's fail-fast decision callback
-  errors even though intentionally configured run warnings remain suppressed;
-  the regression now exercises a decision condition directly.
+- Forecast's cohort wrapper now exposes fluxCore run warnings, including
+  pending-action replacement warnings, instead of suppressing them. Decision
+  callback errors continue to fail fast.
 - Dependency floor updated to `fluxCore (>= 2.1.0)`.
 
 ## fluxForecast 2.0.0

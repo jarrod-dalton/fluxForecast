@@ -137,7 +137,7 @@ forecast <- function(
     fluxCore::ParamContext(draw_id = draw_id, params = param_sets[[draw_id]])
   })
 
-  out <- suppressWarnings(fluxCore::run_cohort(
+  out <- fluxCore::run_cohort(
     engine = engine,
     entities = entities,
     n_param_draws = P,
@@ -149,7 +149,7 @@ forecast <- function(
     backend = backend,
     n_workers = n_workers,
     seed = seed
-  ))
+  )
 
   runs <- out$runs
   idx <- out$index
